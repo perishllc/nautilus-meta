@@ -1,0 +1,29 @@
+{
+  "name": "nautilus-meta",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "nodemon --exec babel-node src/index.js",
+    "build": "babel src -d dist"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/cli": "^7.19.3",
+    "@babel/core": "^7.20.2",
+    "@babel/node": "^7.20.2",
+    "@babel/preset-env": "^7.20.2"
+  },
+  "dependencies": {
+    "axios": "^1.2.0",
+    "dotenv": "^16.0.3",
+    "firebase": "^9.14.0",
+    "firebase-admin": "^11.3.0",
+    "nanocurrency-web": "^1.4.3",
+    "nodemon": "^2.0.20",
+    "redis": "^4.5.1",
+    "uuid": "^9.0.0"
+  }
+}
