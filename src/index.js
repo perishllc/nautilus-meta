@@ -844,7 +844,7 @@ app.post("/notifications", async (req, res) => {
 
     // get request json:
     let request_json = req.body || {};
-    let ret;
+    let ret = {};
 
     switch (request_json.action) {
         case "fcm_update":
@@ -855,9 +855,8 @@ app.post("/notifications", async (req, res) => {
             }
             break;
     }
-
+    // returns nothing:
     res.json(ret);
-
 });
 
 
