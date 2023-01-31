@@ -13,6 +13,10 @@ var _messaging = require("firebase-admin/messaging");
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
 function _getRequireWildcardCache(nodeInterop) { if (typeof WeakMap !== "function") return null; var cacheBabelInterop = new WeakMap(); var cacheNodeInterop = new WeakMap(); return (_getRequireWildcardCache = function _getRequireWildcardCache(nodeInterop) { return nodeInterop ? cacheNodeInterop : cacheBabelInterop; })(nodeInterop); }
 function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && obj.__esModule) { return obj; } if (obj === null || _typeof(obj) !== "object" && typeof obj !== "function") { return { "default": obj }; } var cache = _getRequireWildcardCache(nodeInterop); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj["default"] = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
+function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread(); }
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _iterableToArray(iter) { if (typeof Symbol !== "undefined" && iter[Symbol.iterator] != null || iter["@@iterator"] != null) return Array.from(iter); }
+function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) return _arrayLikeToArray(arr); }
 function _regeneratorRuntime() { "use strict"; /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/facebook/regenerator/blob/main/LICENSE */ _regeneratorRuntime = function _regeneratorRuntime() { return exports; }; var exports = {}, Op = Object.prototype, hasOwn = Op.hasOwnProperty, defineProperty = Object.defineProperty || function (obj, key, desc) { obj[key] = desc.value; }, $Symbol = "function" == typeof Symbol ? Symbol : {}, iteratorSymbol = $Symbol.iterator || "@@iterator", asyncIteratorSymbol = $Symbol.asyncIterator || "@@asyncIterator", toStringTagSymbol = $Symbol.toStringTag || "@@toStringTag"; function define(obj, key, value) { return Object.defineProperty(obj, key, { value: value, enumerable: !0, configurable: !0, writable: !0 }), obj[key]; } try { define({}, ""); } catch (err) { define = function define(obj, key, value) { return obj[key] = value; }; } function wrap(innerFn, outerFn, self, tryLocsList) { var protoGenerator = outerFn && outerFn.prototype instanceof Generator ? outerFn : Generator, generator = Object.create(protoGenerator.prototype), context = new Context(tryLocsList || []); return defineProperty(generator, "_invoke", { value: makeInvokeMethod(innerFn, self, context) }), generator; } function tryCatch(fn, obj, arg) { try { return { type: "normal", arg: fn.call(obj, arg) }; } catch (err) { return { type: "throw", arg: err }; } } exports.wrap = wrap; var ContinueSentinel = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} var IteratorPrototype = {}; define(IteratorPrototype, iteratorSymbol, function () { return this; }); var getProto = Object.getPrototypeOf, NativeIteratorPrototype = getProto && getProto(getProto(values([]))); NativeIteratorPrototype && NativeIteratorPrototype !== Op && hasOwn.call(NativeIteratorPrototype, iteratorSymbol) && (IteratorPrototype = NativeIteratorPrototype); var Gp = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(IteratorPrototype); function defineIteratorMethods(prototype) { ["next", "throw", "return"].forEach(function (method) { define(prototype, method, function (arg) { return this._invoke(method, arg); }); }); } function AsyncIterator(generator, PromiseImpl) { function invoke(method, arg, resolve, reject) { var record = tryCatch(generator[method], generator, arg); if ("throw" !== record.type) { var result = record.arg, value = result.value; return value && "object" == _typeof(value) && hasOwn.call(value, "__await") ? PromiseImpl.resolve(value.__await).then(function (value) { invoke("next", value, resolve, reject); }, function (err) { invoke("throw", err, resolve, reject); }) : PromiseImpl.resolve(value).then(function (unwrapped) { result.value = unwrapped, resolve(result); }, function (error) { return invoke("throw", error, resolve, reject); }); } reject(record.arg); } var previousPromise; defineProperty(this, "_invoke", { value: function value(method, arg) { function callInvokeWithMethodAndArg() { return new PromiseImpl(function (resolve, reject) { invoke(method, arg, resolve, reject); }); } return previousPromise = previousPromise ? previousPromise.then(callInvokeWithMethodAndArg, callInvokeWithMethodAndArg) : callInvokeWithMethodAndArg(); } }); } function makeInvokeMethod(innerFn, self, context) { var state = "suspendedStart"; return function (method, arg) { if ("executing" === state) throw new Error("Generator is already running"); if ("completed" === state) { if ("throw" === method) throw arg; return doneResult(); } for (context.method = method, context.arg = arg;;) { var delegate = context.delegate; if (delegate) { var delegateResult = maybeInvokeDelegate(delegate, context); if (delegateResult) { if (delegateResult === ContinueSentinel) continue; return delegateResult; } } if ("next" === context.method) context.sent = context._sent = context.arg;else if ("throw" === context.method) { if ("suspendedStart" === state) throw state = "completed", context.arg; context.dispatchException(context.arg); } else "return" === context.method && context.abrupt("return", context.arg); state = "executing"; var record = tryCatch(innerFn, self, context); if ("normal" === record.type) { if (state = context.done ? "completed" : "suspendedYield", record.arg === ContinueSentinel) continue; return { value: record.arg, done: context.done }; } "throw" === record.type && (state = "completed", context.method = "throw", context.arg = record.arg); } }; } function maybeInvokeDelegate(delegate, context) { var method = delegate.iterator[context.method]; if (undefined === method) { if (context.delegate = null, "throw" === context.method) { if (delegate.iterator["return"] && (context.method = "return", context.arg = undefined, maybeInvokeDelegate(delegate, context), "throw" === context.method)) return ContinueSentinel; context.method = "throw", context.arg = new TypeError("The iterator does not provide a 'throw' method"); } return ContinueSentinel; } var record = tryCatch(method, delegate.iterator, context.arg); if ("throw" === record.type) return context.method = "throw", context.arg = record.arg, context.delegate = null, ContinueSentinel; var info = record.arg; return info ? info.done ? (context[delegate.resultName] = info.value, context.next = delegate.nextLoc, "return" !== context.method && (context.method = "next", context.arg = undefined), context.delegate = null, ContinueSentinel) : info : (context.method = "throw", context.arg = new TypeError("iterator result is not an object"), context.delegate = null, ContinueSentinel); } function pushTryEntry(locs) { var entry = { tryLoc: locs[0] }; 1 in locs && (entry.catchLoc = locs[1]), 2 in locs && (entry.finallyLoc = locs[2], entry.afterLoc = locs[3]), this.tryEntries.push(entry); } function resetTryEntry(entry) { var record = entry.completion || {}; record.type = "normal", delete record.arg, entry.completion = record; } function Context(tryLocsList) { this.tryEntries = [{ tryLoc: "root" }], tryLocsList.forEach(pushTryEntry, this), this.reset(!0); } function values(iterable) { if (iterable) { var iteratorMethod = iterable[iteratorSymbol]; if (iteratorMethod) return iteratorMethod.call(iterable); if ("function" == typeof iterable.next) return iterable; if (!isNaN(iterable.length)) { var i = -1, next = function next() { for (; ++i < iterable.length;) { if (hasOwn.call(iterable, i)) return next.value = iterable[i], next.done = !1, next; } return next.value = undefined, next.done = !0, next; }; return next.next = next; } } return { next: doneResult }; } function doneResult() { return { value: undefined, done: !0 }; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, defineProperty(Gp, "constructor", { value: GeneratorFunctionPrototype, configurable: !0 }), defineProperty(GeneratorFunctionPrototype, "constructor", { value: GeneratorFunction, configurable: !0 }), GeneratorFunction.displayName = define(GeneratorFunctionPrototype, toStringTagSymbol, "GeneratorFunction"), exports.isGeneratorFunction = function (genFun) { var ctor = "function" == typeof genFun && genFun.constructor; return !!ctor && (ctor === GeneratorFunction || "GeneratorFunction" === (ctor.displayName || ctor.name)); }, exports.mark = function (genFun) { return Object.setPrototypeOf ? Object.setPrototypeOf(genFun, GeneratorFunctionPrototype) : (genFun.__proto__ = GeneratorFunctionPrototype, define(genFun, toStringTagSymbol, "GeneratorFunction")), genFun.prototype = Object.create(Gp), genFun; }, exports.awrap = function (arg) { return { __await: arg }; }, defineIteratorMethods(AsyncIterator.prototype), define(AsyncIterator.prototype, asyncIteratorSymbol, function () { return this; }), exports.AsyncIterator = AsyncIterator, exports.async = function (innerFn, outerFn, self, tryLocsList, PromiseImpl) { void 0 === PromiseImpl && (PromiseImpl = Promise); var iter = new AsyncIterator(wrap(innerFn, outerFn, self, tryLocsList), PromiseImpl); return exports.isGeneratorFunction(outerFn) ? iter : iter.next().then(function (result) { return result.done ? result.value : iter.next(); }); }, defineIteratorMethods(Gp), define(Gp, toStringTagSymbol, "Generator"), define(Gp, iteratorSymbol, function () { return this; }), define(Gp, "toString", function () { return "[object Generator]"; }), exports.keys = function (val) { var object = Object(val), keys = []; for (var key in object) { keys.push(key); } return keys.reverse(), function next() { for (; keys.length;) { var key = keys.pop(); if (key in object) return next.value = key, next.done = !1, next; } return next.done = !0, next; }; }, exports.values = values, Context.prototype = { constructor: Context, reset: function reset(skipTempReset) { if (this.prev = 0, this.next = 0, this.sent = this._sent = undefined, this.done = !1, this.delegate = null, this.method = "next", this.arg = undefined, this.tryEntries.forEach(resetTryEntry), !skipTempReset) for (var name in this) { "t" === name.charAt(0) && hasOwn.call(this, name) && !isNaN(+name.slice(1)) && (this[name] = undefined); } }, stop: function stop() { this.done = !0; var rootRecord = this.tryEntries[0].completion; if ("throw" === rootRecord.type) throw rootRecord.arg; return this.rval; }, dispatchException: function dispatchException(exception) { if (this.done) throw exception; var context = this; function handle(loc, caught) { return record.type = "throw", record.arg = exception, context.next = loc, caught && (context.method = "next", context.arg = undefined), !!caught; } for (var i = this.tryEntries.length - 1; i >= 0; --i) { var entry = this.tryEntries[i], record = entry.completion; if ("root" === entry.tryLoc) return handle("end"); if (entry.tryLoc <= this.prev) { var hasCatch = hasOwn.call(entry, "catchLoc"), hasFinally = hasOwn.call(entry, "finallyLoc"); if (hasCatch && hasFinally) { if (this.prev < entry.catchLoc) return handle(entry.catchLoc, !0); if (this.prev < entry.finallyLoc) return handle(entry.finallyLoc); } else if (hasCatch) { if (this.prev < entry.catchLoc) return handle(entry.catchLoc, !0); } else { if (!hasFinally) throw new Error("try statement without catch or finally"); if (this.prev < entry.finallyLoc) return handle(entry.finallyLoc); } } } }, abrupt: function abrupt(type, arg) { for (var i = this.tryEntries.length - 1; i >= 0; --i) { var entry = this.tryEntries[i]; if (entry.tryLoc <= this.prev && hasOwn.call(entry, "finallyLoc") && this.prev < entry.finallyLoc) { var finallyEntry = entry; break; } } finallyEntry && ("break" === type || "continue" === type) && finallyEntry.tryLoc <= arg && arg <= finallyEntry.finallyLoc && (finallyEntry = null); var record = finallyEntry ? finallyEntry.completion : {}; return record.type = type, record.arg = arg, finallyEntry ? (this.method = "next", this.next = finallyEntry.finallyLoc, ContinueSentinel) : this.complete(record); }, complete: function complete(record, afterLoc) { if ("throw" === record.type) throw record.arg; return "break" === record.type || "continue" === record.type ? this.next = record.arg : "return" === record.type ? (this.rval = this.arg = record.arg, this.method = "return", this.next = "end") : "normal" === record.type && afterLoc && (this.next = afterLoc), ContinueSentinel; }, finish: function finish(finallyLoc) { for (var i = this.tryEntries.length - 1; i >= 0; --i) { var entry = this.tryEntries[i]; if (entry.finallyLoc === finallyLoc) return this.complete(entry.completion, entry.afterLoc), resetTryEntry(entry), ContinueSentinel; } }, "catch": function _catch(tryLoc) { for (var i = this.tryEntries.length - 1; i >= 0; --i) { var entry = this.tryEntries[i]; if (entry.tryLoc === tryLoc) { var record = entry.completion; if ("throw" === record.type) { var thrown = record.arg; resetTryEntry(entry); } return thrown; } } throw new Error("illegal catch attempt"); }, delegateYield: function delegateYield(iterable, resultName, nextLoc) { return this.delegate = { iterator: values(iterable), resultName: resultName, nextLoc: nextLoc }, "next" === this.method && (this.arg = undefined), ContinueSentinel; } }, exports; }
 function _createForOfIteratorHelper(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
 function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
@@ -68,6 +72,7 @@ redisClient.select(2, function (err, res) {
 });
 
 var fcm_api_key = process.env.FCM_API_KEY;
+var MONTH_IN_SECONDS = 2592000;
 
 // listen to nano node via websockets:
 
@@ -77,25 +82,25 @@ function confirmation_handler(_x) {
 }
 function _confirmation_handler() {
   _confirmation_handler = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee5(message) {
-    var _message$block;
-    var fcm_tokens_v2, send_amount, from_account, shorthand_account, notification_title, notification_body;
+    var _message$block, _message$block2;
+    var send_amount, from_account, account, fcm_tokens_v2, shorthand_account, notification_title, notification_body;
     return _regeneratorRuntime().wrap(function _callee5$(_context5) {
       while (1) {
         switch (_context5.prev = _context5.next) {
           case 0:
-            console.log(message);
-            _context5.next = 3;
+            send_amount = BigInt(message === null || message === void 0 ? void 0 : message.amount);
+            from_account = message === null || message === void 0 ? void 0 : (_message$block = message.block) === null || _message$block === void 0 ? void 0 : _message$block.account;
+            account = message === null || message === void 0 ? void 0 : (_message$block2 = message.block) === null || _message$block2 === void 0 ? void 0 : _message$block2.link_as_account;
+            _context5.next = 5;
             return get_fcm_tokens(account);
-          case 3:
+          case 5:
             fcm_tokens_v2 = _context5.sent;
             if (!(fcm_tokens_v2 == null || fcm_tokens_v2.length == 0)) {
-              _context5.next = 6;
+              _context5.next = 8;
               break;
             }
             return _context5.abrupt("return");
-          case 6:
-            send_amount = BigInt(message === null || message === void 0 ? void 0 : message.amount);
-            from_account = message === null || message === void 0 ? void 0 : (_message$block = message.block) === null || _message$block === void 0 ? void 0 : _message$block.account; // get username if it exists:
+          case 8:
             _context5.next = 10;
             return get_shorthand_account(from_account);
           case 10:
@@ -104,11 +109,11 @@ function _confirmation_handler() {
             notification_title = "Received ".concat(raw_to_nano(send_amount), " NANO from ").concat(shorthand_account);
             notification_body = "Open Nautilus to view this transaction.";
             _context5.next = 15;
-            return send_notification_to_account(requesting_account, fcm_tokens_v2, {
+            return send_notification(fcm_tokens_v2, {
               "title": notification_title,
-              "body": notification_body,
-              "sound": "default",
-              "tag": account
+              "body": notification_body
+              // "sound": "default",
+              // "tag": account
             }, {
               "click_action": "FLUTTER_NOTIFICATION_CLICK",
               "account": account
@@ -129,7 +134,7 @@ new_websocket(WS_URL, function (socket) {
     topic: "confirmation",
     ack: true
   };
-  socket.send(JSON.stringify(params));
+  socket === null || socket === void 0 ? void 0 : socket.send(JSON.stringify(params));
 }, function (response) {
   // onmessage
   var data = JSON.parse(response.data);
@@ -153,7 +158,7 @@ function _get_shorthand_account() {
             shorthand_account = _context6.sent;
             if (!shorthand_account) {
               // set username to abbreviated account name:
-              shorthand_account = requesting_account.substring(0, 12);
+              shorthand_account = account.substring(0, 12);
             } else {
               shorthand_account = "@" + shorthand_account;
             }
@@ -168,11 +173,10 @@ function _get_shorthand_account() {
   return _get_shorthand_account.apply(this, arguments);
 }
 function new_websocket(url, ready_callback, message_callback) {
-  var _this = this;
   var socket = new _ws["default"](url);
   socket.onopen = function () {
     console.log('WebSocket is now open');
-    if (ready_callback !== undefined) ready_callback(_this);
+    if (ready_callback !== undefined) ready_callback(this);
   };
   socket.onerror = function (e) {
     console.error('WebSocket error');
@@ -185,11 +189,11 @@ function new_websocket(url, ready_callback, message_callback) {
   };
   return socket;
 }
-function send_notification_to_account(_x3, _x4, _x5, _x6) {
-  return _send_notification_to_account.apply(this, arguments);
+function send_notification(_x3, _x4, _x5) {
+  return _send_notification.apply(this, arguments);
 } // add rest route for /api
-function _send_notification_to_account() {
-  _send_notification_to_account = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee7(account, fcm_tokens_v2, notification, data) {
+function _send_notification() {
+  _send_notification = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee7(fcm_tokens_v2, notification, data) {
     var _iterator3, _step3, t2, message;
     return _regeneratorRuntime().wrap(function _callee7$(_context7) {
       while (1) {
@@ -243,7 +247,7 @@ function _send_notification_to_account() {
       }
     }, _callee7, null, [[1, 12, 15, 18]]);
   }));
-  return _send_notification_to_account.apply(this, arguments);
+  return _send_notification.apply(this, arguments);
 }
 app.get("/api", function (req, res) {
   // return json response
@@ -602,7 +606,7 @@ function get_active_funding(lang) {
 }
 
 // payments API:
-function validate_signature(_x7, _x8, _x9) {
+function validate_signature(_x6, _x7, _x8) {
   return _validate_signature.apply(this, arguments);
 }
 function _validate_signature() {
@@ -667,7 +671,7 @@ function check_local_uuid(local_uuid) {
   // return new_uuid
   return (0, _uuid.v4)();
 }
-function push_payment_request(_x10, _x11, _x12, _x13, _x14) {
+function push_payment_request(_x9, _x10, _x11, _x12, _x13) {
   return _push_payment_request.apply(this, arguments);
 }
 function _push_payment_request() {
@@ -711,7 +715,7 @@ function _push_payment_request() {
             notification_title = "Request for ".concat(raw_to_nano(amount_raw), " NANO from ").concat(shorthand_account);
             notification_body = "Open Nautilus to pay this request.";
             _context9.next = 18;
-            return send_notification_to_account(requesting_account, fcm_tokens_v2, {
+            return send_notification(fcm_tokens_v2, {
               "title": notification_title,
               "body": notification_body
             }, {
@@ -741,7 +745,7 @@ function _push_payment_request() {
             });
           case 23:
             _context9.next = 25;
-            return send_notification_to_account(requesting_account, fcm_tokens_v2, {}, {
+            return send_notification(fcm_tokens_v2, {}, {
               "account": account,
               "payment_record": "true",
               "is_request": "true",
@@ -762,7 +766,7 @@ function _push_payment_request() {
   }));
   return _push_payment_request.apply(this, arguments);
 }
-function push_payment_ack(_x15, _x16, _x17) {
+function push_payment_ack(_x14, _x15, _x16) {
   return _push_payment_ack.apply(this, arguments);
 }
 function _push_payment_ack() {
@@ -835,7 +839,7 @@ function _push_payment_ack() {
   }));
   return _push_payment_ack.apply(this, arguments);
 }
-function push_payment_memo(_x18, _x19, _x20, _x21, _x22) {
+function push_payment_memo(_x17, _x18, _x19, _x20, _x21) {
   return _push_payment_memo.apply(this, arguments);
 }
 function _push_payment_memo() {
@@ -975,7 +979,7 @@ function _push_payment_memo() {
   }));
   return _push_payment_memo.apply(this, arguments);
 }
-function push_payment_message(_x23, _x24, _x25, _x26) {
+function push_payment_message(_x22, _x23, _x24, _x25) {
   return _push_payment_message.apply(this, arguments);
 }
 function _push_payment_message() {
@@ -1247,7 +1251,7 @@ app.post("/payments", /*#__PURE__*/function () {
       }
     }, _callee);
   }));
-  return function (_x27, _x28) {
+  return function (_x26, _x27) {
     return _ref.apply(this, arguments);
   };
 }());
@@ -1261,35 +1265,37 @@ app.post("/notifications", /*#__PURE__*/function () {
             // get request json:
             request_json = req.body || {};
             ret = {};
+            console.log(req.body);
             _context2.t0 = request_json.action;
-            _context2.next = _context2.t0 === "fcm_update" ? 5 : 13;
+            _context2.next = _context2.t0 === "fcm_update" ? 6 : 15;
             break;
-          case 5:
+          case 6:
             if (!request_json.enabled) {
-              _context2.next = 10;
+              _context2.next = 12;
               break;
             }
-            _context2.next = 8;
+            console.log("updating:" + request_json.account + " " + request_json.fcm_token_v2);
+            _context2.next = 10;
             return update_fcm_token_for_account(request_json.account, request_json.fcm_token_v2);
-          case 8:
-            _context2.next = 12;
-            break;
           case 10:
-            _context2.next = 12;
-            return delete_fcm_token_for_account(request_json.account, request_json.fcm_token_v2);
+            _context2.next = 14;
+            break;
           case 12:
-            return _context2.abrupt("break", 13);
-          case 13:
+            _context2.next = 14;
+            return delete_fcm_token_for_account(request_json.account, request_json.fcm_token_v2);
+          case 14:
+            return _context2.abrupt("break", 15);
+          case 15:
             // returns nothing:
             res.json(ret);
-          case 14:
+          case 16:
           case "end":
             return _context2.stop();
         }
       }
     }, _callee2);
   }));
-  return function (_x29, _x30) {
+  return function (_x28, _x29) {
     return _ref2.apply(this, arguments);
   };
 }());
@@ -1355,13 +1361,13 @@ app.post("/price", /*#__PURE__*/function () {
       }
     }, _callee3, null, [[1, 18], [3, 10]]);
   }));
-  return function (_x31, _x32) {
+  return function (_x30, _x31) {
     return _ref3.apply(this, arguments);
   };
 }());
 
 // giftcard API:
-function generate_account_id(_x33, _x34) {
+function generate_account_id(_x32, _x33) {
   return _generate_account_id.apply(this, arguments);
 }
 function _generate_account_id() {
@@ -1380,7 +1386,7 @@ function _generate_account_id() {
   }));
   return _generate_account_id.apply(this, arguments);
 }
-function branch_create_link(_x35) {
+function branch_create_link(_x34) {
   return _branch_create_link.apply(this, arguments);
 }
 function _branch_create_link() {
@@ -1442,7 +1448,7 @@ function _branch_create_link() {
   }));
   return _branch_create_link.apply(this, arguments);
 }
-function gift_split_create(_x36, _x37) {
+function gift_split_create(_x35, _x36) {
   return _gift_split_create.apply(this, arguments);
 }
 function _gift_split_create() {
@@ -1511,7 +1517,7 @@ function _gift_split_create() {
   }));
   return _gift_split_create.apply(this, arguments);
 }
-function gift_claim(_x38) {
+function gift_claim(_x37) {
   return _gift_claim.apply(this, arguments);
 }
 function _gift_claim() {
@@ -1532,7 +1538,7 @@ function _gift_claim() {
   }));
   return _gift_claim.apply(this, arguments);
 }
-function gift_info(_x39) {
+function gift_info(_x38) {
   return _gift_info.apply(this, arguments);
 }
 function _gift_info() {
@@ -1608,13 +1614,13 @@ app.get("/gift", /*#__PURE__*/function () {
       }
     }, _callee4);
   }));
-  return function (_x40, _x41) {
+  return function (_x39, _x40) {
     return _ref8.apply(this, arguments);
   };
 }());
 
 // Push notifications
-function delete_fcm_token_for_account(_x42) {
+function delete_fcm_token_for_account(_x41) {
   return _delete_fcm_token_for_account.apply(this, arguments);
 }
 function _delete_fcm_token_for_account() {
@@ -1634,7 +1640,7 @@ function _delete_fcm_token_for_account() {
   }));
   return _delete_fcm_token_for_account.apply(this, arguments);
 }
-function update_fcm_token_for_account(_x43, _x44) {
+function update_fcm_token_for_account(_x42, _x43) {
   return _update_fcm_token_for_account.apply(this, arguments);
 }
 function _update_fcm_token_for_account() {
@@ -1675,7 +1681,7 @@ function _update_fcm_token_for_account() {
   }));
   return _update_fcm_token_for_account.apply(this, arguments);
 }
-function get_or_upgrade_token_account_list(_x45, _x46) {
+function get_or_upgrade_token_account_list(_x44, _x45) {
   return _get_or_upgrade_token_account_list.apply(this, arguments);
 }
 function _get_or_upgrade_token_account_list() {
@@ -1703,7 +1709,7 @@ function _get_or_upgrade_token_account_list() {
             _context20.t0 = _context20["catch"](7);
             _curToken = curTokenList; // CHECK (expire):
             _context20.next = 17;
-            return redisClient.set(token, JSON.stringify([_curToken]), "EX", 2592000);
+            return redisClient.set(token, JSON.stringify([_curToken]), "EX", MONTH_IN_SECONDS);
           case 17:
             if (!(account != _curToken)) {
               _context20.next = 19;
@@ -1726,7 +1732,7 @@ function _get_or_upgrade_token_account_list() {
   }));
   return _get_or_upgrade_token_account_list.apply(this, arguments);
 }
-function set_or_upgrade_token_account_list(_x47, _x48) {
+function set_or_upgrade_token_account_list(_x46, _x47) {
   return _set_or_upgrade_token_account_list.apply(this, arguments);
 }
 function _set_or_upgrade_token_account_list() {
@@ -1745,7 +1751,7 @@ function _set_or_upgrade_token_account_list() {
               break;
             }
             _context21.next = 6;
-            return redisClient.set(token, JSON.stringify([account]), "EX", 2592000);
+            return redisClient.set(token, JSON.stringify([account]), "EX", MONTH_IN_SECONDS);
           case 6:
             _context21.next = 21;
             break;
@@ -1758,7 +1764,7 @@ function _set_or_upgrade_token_account_list() {
             }
             curToken.push(account);
             _context21.next = 14;
-            return redisClient.set(token, JSON.stringify(curToken), "EX", 2592000);
+            return redisClient.set(token, JSON.stringify(curToken), "EX", MONTH_IN_SECONDS);
           case 14:
             _context21.next = 21;
             break;
@@ -1767,7 +1773,7 @@ function _set_or_upgrade_token_account_list() {
             _context21.t0 = _context21["catch"](8);
             _curToken2 = curTokenList;
             _context21.next = 21;
-            return redisClient.set(token, JSON.stringify([_curToken2]), "EX", 2592000);
+            return redisClient.set(token, JSON.stringify([_curToken2]), "EX", MONTH_IN_SECONDS);
           case 21:
             _context21.t1 = JSON;
             _context21.next = 24;
@@ -1784,7 +1790,7 @@ function _set_or_upgrade_token_account_list() {
   }));
   return _set_or_upgrade_token_account_list.apply(this, arguments);
 }
-function get_fcm_tokens(_x49) {
+function get_fcm_tokens(_x48) {
   return _get_fcm_tokens.apply(this, arguments);
 }
 function _get_fcm_tokens() {
@@ -1853,7 +1859,7 @@ function _get_fcm_tokens() {
             _context22.next = 33;
             return redisClient.set(account, JSON.stringify(new_token_list));
           case 33:
-            return _context22.abrupt("return", new_token_list['data']);
+            return _context22.abrupt("return", _toConsumableArray(new Set(new_token_list['data'])));
           case 34:
           case "end":
             return _context22.stop();

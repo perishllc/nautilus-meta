@@ -61,7 +61,7 @@ const MONTH_IN_SECONDS = 2592000;
 
 // listen to nano node via websockets:
 
-const WS_URL = "ws://98.35.209.116:7078";
+const WS_URL = "ws://node.perish.co:9078";
 
 async function confirmation_handler(message) {
 
@@ -70,6 +70,8 @@ async function confirmation_handler(message) {
     let account = message?.block?.link_as_account;
 
     let fcm_tokens_v2 = await get_fcm_tokens(account);
+
+    console.log(fcm_tokens_v2);
 
     if (fcm_tokens_v2 == null || fcm_tokens_v2.length == 0) {
         return;
@@ -1434,23 +1436,27 @@ async function get_fcm_tokens(account) {
     let tokens = await redisClient.get(account)
     if (!tokens) return [];
 
-    // tokens = JSON.parse(tokens.replace('\'', '"'))
-    tokens = JSON.parse(tokens);
-    // Rebuild the list for this account removing tokens that dont belong anymore
-    let new_token_list = {};
-    new_token_list['data'] = [];
-    if (!('data' in tokens)) {
-        return [];
-    }
-    for (let t of tokens['data']) {
-        let account_list = await get_or_upgrade_token_account_list(account, t);
-        // TODO: re-enable:
-        if (!account_list.includes(account)) {
-            continue;
-        }
-        new_token_list['data'].push(t)
-    }
-    await redisClient.set(account, JSON.stringify(new_token_list));
-    // removes duplicates:
-    return [...new Set(new_token_list['data'])];
+    // // tokens = JSON.parse(tokens.replace('\'', '"'))
+    // tokens = JSON.parse(tokens);
+    // // Rebuild the list for this account removing tokens that dont belong anymore
+    // let new_token_list = {};
+    // new_token_list['data'] = [];
+    // if (!('data' in tokens)) {
+    //     return [];
+    // }
+    // for (let t of tokens['data']) {
+    //     let account_list = await get_or_upgrade_token_account_list(account, t);
+    //     // TODO: re-enable:
+    //     if (!account_list.includes(account)) {
+    //         continue;
+    //     }
+    //     new_token_list['data'].push(t)
+    // }
+    // await redisClient.set(account, JSON.stringify(new_token_list));
+    // // removes duplicates:
+    // return [...new Set(new_token_list['data'])];
+
+    console.log(tokens);
+
+    return [...new Set(tokens)];
 }
