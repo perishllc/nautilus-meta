@@ -2,7 +2,7 @@ import * as dotenv from "dotenv";
 dotenv.config()
 import express from "express";
 import axios, { isCancel, AxiosError } from "axios";
-import { tools } from "nanocurrency-web";
+import { tools, wallet, block } from "nanocurrency-web";
 import { createClient } from "redis";
 import { v4 as uuidv4 } from "uuid";
 import WebSocket, { WebSocketServer } from "ws";
@@ -56,12 +56,33 @@ redisClient.select(2, (err, res) => {
 
 const fcm_api_key = process.env.FCM_API_KEY;
 const MONTH_IN_SECONDS = 2592000;
+const nonce_timeout_seconds = 100;
+const nonce_separator = '^';
 
 
 
 // listen to nano node via websockets:
 
+const HTTP_URL = "http://node.perish.co:9076";
 const WS_URL = "ws://node.perish.co:9078";
+// const WORK_URL = "http://workers.perish.co:5555";
+const WORK_URL = "https://pow.nano.to";
+const testing = true;
+const REPRESENTATIVE = "nano_38713x95zyjsqzx6nm1dsom1jmm668owkeb9913ax6nfgj15az3nu8xkx579";
+
+async function rpc_call(data) {
+    let res = await axios.post(HTTP_URL, data);
+    return res.data;
+}
+
+async function get_work(hash) {
+    let res = await axios.post(WORK_URL, { hash: hash }, {
+        headers: {
+            'Accept-Encoding': 'application/json'
+        },
+    });
+    return res.data?.work;
+}
 
 async function confirmation_handler(message) {
 
@@ -70,8 +91,6 @@ async function confirmation_handler(message) {
     let account = message?.block?.link_as_account;
 
     let fcm_tokens_v2 = await get_fcm_tokens(account);
-
-    console.log(fcm_tokens_v2);
 
     if (fcm_tokens_v2 == null || fcm_tokens_v2.length == 0) {
         return;
@@ -99,6 +118,8 @@ async function confirmation_handler(message) {
     );
 
 }
+
+
 
 new_websocket(WS_URL, (socket) => {
     // onopen
@@ -136,21 +157,21 @@ async function get_shorthand_account(account) {
 function new_websocket(url, ready_callback, message_callback) {
     let socket = new WebSocket(url);
     socket.onopen = function () {
-      console.log('WebSocket is now open');
-      if (ready_callback !== undefined) ready_callback(this);
+        console.log('WebSocket is now open');
+        if (ready_callback !== undefined) ready_callback(this);
     }
     socket.onerror = function (e) {
-      console.error('WebSocket error');
-      console.error(e);
+        console.error('WebSocket error');
+        console.error(e);
     }
     socket.onmessage = function (response) {
-      if (message_callback !== undefined) {
-        message_callback(response);
-      }
+        if (message_callback !== undefined) {
+            message_callback(response);
+        }
     }
-  
+
     return socket;
-  }
+}
 
 
 async function send_notification(fcm_tokens_v2, notification, data) {
@@ -941,10 +962,7 @@ app.post("/payments", async (req, res) => {
             break;
     }
 
-    console.log(ret);
-
     res.json(ret);
-
 });
 
 
@@ -953,8 +971,6 @@ app.post("/notifications", async (req, res) => {
     // get request json:
     let request_json = req.body || {};
     let ret = {};
-
-    console.log(req.body);
 
     switch (request_json.action) {
         case "fcm_update":
@@ -1018,14 +1034,13 @@ app.post("/price", async (req, res) => {
 // giftcard API:
 
 
-async function generate_account_id(seed, index) {
-    // TODO:
-    return "0";
+async function generate_account_from_seed(seed) {
+    let w = wallet.fromLegacySeed(seed);
+    return w.accounts[0];
 }
 
 async function branch_create_link({ paperWalletSeed, paperWalletAccount, memo, fromAddress, amountRaw, giftUUID, requireCaptcha }) {
-    let url = "https://api2.branch.io/v1/url"
-    let headers = { 'Content-Type': 'application/json' }
+    let url = "https://api2.branch.io/v1/url";
 
     let branch_api_key = process.env.BRANCH_API_KEY;
 
@@ -1038,7 +1053,7 @@ async function branch_create_link({ paperWalletSeed, paperWalletAccount, memo, f
         giftDescription = `Someone sent you ${formattedAmount} NANO! Get the app to open this gift card!`;
     }
 
-    data = {
+    let data = {
         "branch_key": branch_api_key,
         "channel": "nautilus-backend",
         "feature": "splitgift",
@@ -1063,60 +1078,60 @@ async function branch_create_link({ paperWalletSeed, paperWalletAccount, memo, f
     // resp = requests.post(url, headers=headers, data=data)
     // TODO: axios:
     let resp = await axios.post(url, data);
-    console.log(resp);
     return resp;
 }
 
-async function gift_split_create(res, { seed, split_amount_raw, memo, requesting_account, require_captcha }) {
-    // TODO:
-    // let giftUUID = str(uuid.uuid4())[-12:];
-    let giftUUID = "";
+async function gift_split_create({ seed, split_amount_raw, memo, requesting_account, require_captcha }) {
+
+    let giftUUID = uuidv4().slice(-12);
     let giftData = {
         "seed": seed,
-        "split_amount_raw": splitAmountRaw,
+        "split_amount_raw": split_amount_raw,
         "memo": memo,
-        "from_address": fromAddress,
+        "from_address": requesting_account,
         "gift_uuid": giftUUID,
-        "require_captcha": requireCaptcha,
+        "require_captcha": require_captcha,
     };
-    await redisClient.hset("gift_data", giftUUID, giftData);
 
-    if (BigInt(splitAmountRaw) > BigInt(1000000000000000000000000000000000)) {
-        res.json({ "error": "splitAmountRaw is too large" });
-        return;
+    await redisClient.hSet("gift_data", giftUUID, JSON.stringify(giftData));
+
+    if (BigInt(split_amount_raw) > BigInt(1000000000000000000000000000000000)) {
+        return { "error": "split_amount_raw is too large" };
     }
 
-    let paperWalletAccount = generate_account_id(seed, 0);
+    let paperWalletAccount = await generate_account_from_seed(seed);
 
     let branchResponse = await branch_create_link(
         {
             paperWalletSeed: seed,
             paperWalletAccount, memo,
-            fromAddress,
-            amountRaw: splitAmountRaw,
-            giftUUID,
-            requireCaptcha,
-        });
-    if (branchResponse == null || branchResponse.status_code != 200) {
+            fromAddress: requesting_account,
+            amountRaw: split_amount_raw,
+            giftUUID: giftUUID,
+            requireCaptcha: require_captcha,
+        },
+    );
+
+    if (branchResponse?.data?.url == null) {
         return { "error": "error creating branch link" }
     }
 
-    let branchLink = branchResponse.json().url;
-    return { "link": branchLink, "gift_data": giftData }
+    let branchLink = branchResponse.data?.url;
+    return { success: true, link: branchLink, gift_data: giftData };
 }
 
 async function gift_claim({ gift_uuid, requesting_account, requesting_device_uuid }) {
-    return null;
     // # get the gift data from the db
-    // giftData = await r.app['rdata'].hget("gift_data", giftUUID)
-    // giftData = json.loads(giftData)
-    // giftUUID = giftData.get("gift_uuid")
-    // seed = giftData.get("seed")
-    // fromAddress = giftData.get("from_address")
-    // splitAmountRaw = giftData.get("split_amount_raw")
-    // amountRaw = giftData.get("amount_raw")
-    // memo = giftData.get("memo")
-    // requireCaptcha = giftData.get("require_captcha")
+    let giftData = await redisClient.hGet("gift_data", gift_uuid);
+    giftData = JSON.parse(giftData);
+    let giftUUID = giftData.gift_uuid;
+    let seed = giftData.seed;
+    let fromAddress = giftData.from_address;
+    let splitAmountRaw = giftData.split_amount_raw;
+    let amountRaw = giftData.amount_raw;
+    let memo = giftData.memo;
+    let requireCaptcha = giftData.require_captcha;
+    let requestingDeviceUUID = requesting_device_uuid;
 
     // if 'app-version' in r.headers:
     //     appVersion = r.headers.get('app-version')
@@ -1127,204 +1142,276 @@ async function gift_claim({ gift_uuid, requesting_account, requesting_device_uui
     // else:
     //     return json.dumps({"error": "App version is too old!"})
 
-    // if requireCaptcha == True:
-    //     if 'hcaptcha-token' in r.headers:
-    //         hcaptchaToken = r.headers.get('hcaptcha-token')
+    if (requireCaptcha) {
+        // TODO:
 
-    //         # post to hcaptcha to verify the token:
-    //         data = {
-    //             "response": hcaptchaToken,
-    //             "secret": hcaptcha_secret_key,
-    //         }
+        // if 'hcaptcha-token' in r.headers:
+        //     hcaptchaToken = r.headers.get('hcaptcha-token')
 
-    //         response = requests.post("https://hcaptcha.com/siteverify", data=data)
+        //     // # post to hcaptcha to verify the token:
+        //     let data = {
+        //         "response": hcaptchaToken,
+        //         "secret": hcaptcha_secret_key,
+        //     };
 
-    //         if response.json().get("success") != True:
-    //             return json.dumps({"error": "hcaptcha-token invalid!"})
+        //     // response = requests.post("https://hcaptcha.com/siteverify", data=data)
 
-    //     else:
-    //         return json.dumps({"error": "no hcaptcha-token!"})
+        //     // if response.json().get("success") != True {
+        //     //     return json.dumps({"error": "hcaptcha-token invalid!"})
+        //     // }
+        // } else {
+        //     return {"error": "no hcaptcha-token!"};
+        // }
+    }
 
-    // sendAmountRaw = None
-    // if splitAmountRaw != None:
-    //     sendAmountRaw = splitAmountRaw
-    // elif amountRaw != None:
-    //     sendAmountRaw = amountRaw
+    let sendAmountRaw = null;
+    if (!!splitAmountRaw) {
+        sendAmountRaw = splitAmountRaw
+    } else if (!!amountRaw) {
+        sendAmountRaw = amountRaw
+    }
 
-    // if sendAmountRaw == None:
-    //     return json.dumps({"error": "sendAmountRaw is None"})
+    if (!sendAmountRaw) {
+        return { "error": "sendAmountRaw is None" };
+    }
 
 
-    // # check the gift card balance and receive any incoming funds:
-    // if giftUUID == None:
-    //     return json.dumps({"error": "gift not found!"})
+    // check the gift card balance and receive any incoming funds:
+    if (!giftUUID) {
+        return { "error": "gift not found!" };
+    }
 
-    // if requestingDeviceUUID == None or requestingDeviceUUID == "":
-    //     return json.dumps({"error": "requestingDeviceUUID is None"})
+    if (!requestingDeviceUUID || requestingDeviceUUID == "") {
+        return { "error": "requestingDeviceUUID is None" };
+    }
 
-    // # check if it was claimed by this user:
-    // # splitID = util.get_request_ip(r) + nonce_separator + giftUUID + nonce_separator + requestingAccount
-    // splitID = requestingDeviceUUID + nonce_separator + giftUUID
-    // # splitID = util.get_request_ip(r) + nonce_separator + giftUUID
-    // claimed = await r.app['rdata'].hget("gift_claims", splitID)
-    // if claimed != None:
-    //     return json.dumps({"error": "gift has already been claimed"})
+    // check if it was claimed by this user:
+    // splitID = util.get_request_ip(r) + nonce_separator + giftUUID + nonce_separator + requestingAccount
+    let splitID = requestingDeviceUUID + nonce_separator + giftUUID;
+    // splitID = util.get_request_ip(r) + nonce_separator + giftUUID
+    let claimed = await redisClient.hGet("gift_claims", splitID);
+    if (!!claimed && !testing) {
+        return { "error": "gift has already been claimed" };
+    }
 
-    // giftSeed = seed
-    // giftAccount = generate_account_id(giftSeed, 0).replace("xrb_", "nano_")
-    // giftPrivateKey = generate_account_private_key(giftSeed, 0)
+    let giftSeed = seed
+    let giftAccount = (await generate_account_from_seed(giftSeed)).address;
+    let giftPrivateKey = (await generate_account_from_seed(giftSeed)).privateKey;
+    let giftPublicKey = (await generate_account_from_seed(giftSeed)).publicKey;
 
-    // # receive any receivable funds from the paper wallet first:
+    // receive any receivable funds from the paper wallet first:
 
-    // giftWalletBalanceInt = None
+    let giftWalletBalanceInt = null;
 
-    // # get account_info:
-    // response = await rpc.json_post({"action": "account_info", "account": giftAccount})
-    // account_not_opened = False
-    // if response.get("error") == "Account not found":
-    //     account_not_opened = True
-    // elif response.get("error") != None:
-    //     return json.dumps({"error": response.get("error")})
-    // else:
-    //     giftWalletBalanceInt = int(response.get("balance"))
+    // get account_info:
+    let response = await rpc_call({ "action": "account_info", "account": giftAccount });
+    let account_not_opened = false;
+    if (response.error == "Account not found") {
+        account_not_opened = true;
+    } else if (!!response.error) {
+        return { "error": response.error };
+    } else {
+        giftWalletBalanceInt = response.balance;
+    }
 
-    // frontier = None
-    // if not account_not_opened:
-    //     frontier = response.get("frontier")
+    let frontier = null;
+    if (!account_not_opened) {
+        frontier = response.frontier;
+    }
 
-    // # get the receivable blocks:
-    // receivable_resp = await rpc.json_post({"action": "receivable", "source": True, "count": 10, "include_active": True, "account": giftAccount})
-    // if receivable_resp.get("blocks") == "":
-    //     receivable_resp["blocks"] = {}
+    // get the receivable blocks:
+    let receivable_resp = await rpc_call({ "action": "receivable", "source": true, "count": 10, "include_active": true, "account": giftAccount });
+    if (receivable_resp.blocks == "") {
+        receivable_resp.blocks = {};
+    }
 
-    // # receive each block:
-    // for hash in receivable_resp.get("blocks").keys():
-    //     item = receivable_resp["blocks"][hash]
-    //     if (frontier != None):
-    //         giftWalletBalanceInt = int(item.get("amount"))
-    //         receiveBlock = {
-    //             "type": "state",
-    //             "account": giftAccount,
-    //             "previous": frontier,
-    //             "representative": "nano_38713x95zyjsqzx6nm1dsom1jmm668owkeb9913ax6nfgj15az3nu8xkx579",
-    //             "balance": giftWalletBalanceInt,
-    //             "link": hash,
-    //             "link_as_account": get_account_id(public_key=hash).replace("xrb_", "nano_")
-    //         }
-    //         signature = nanopy.sign(key=giftPrivateKey, block=receiveBlock)
-    //         receiveBlock["signature"] = signature
+    // receive each block:
+    for (let hash in receivable_resp.blocks) {
+        let item = receivable_resp.blocks[hash];
 
-    //         resp = await rpc.process_defer(r, "fake_uid", receiveBlock, True, subtype="receive")
-    //         if resp.get("hash") != None:
-    //             frontier = resp.get("hash")
-    //             # totalTransferred += BigInt.parse(item.amount!)
-    //     else:
-    //         giftWalletBalanceInt = int(item.get("amount"))
-    //         openBlock = {
-    //             "type": "state",
-    //             "account": giftAccount,
-    //             "previous": "0000000000000000000000000000000000000000000000000000000000000000",
-    //             "representative": "nano_38713x95zyjsqzx6nm1dsom1jmm668owkeb9913ax6nfgj15az3nu8xkx579",
-    //             "balance": giftWalletBalanceInt,
-    //             "link": hash,
-    //             "link_as_account": get_account_id(public_key=hash).replace("xrb_", "nano_")
-    //         }
-    //         signature = nanopy.sign(key=giftPrivateKey, block=openBlock)
-    //         openBlock["signature"] = signature
+        // we have a frontier, i.e. the account is already opened:
+        if (!!frontier) {
+            giftWalletBalanceInt = item.amount;
 
-    //         resp = await rpc.process_defer(r, "fake_uid", openBlock, True, subtype="open")
-    //         if resp.get("hash") != None:
-    //             frontier = resp.get("hash")
-    //             # totalTransferred += BigInt.parse(item.amount!);
+            let blockData = {
+                frontier: frontier,
+                toAddress: giftAccount,
+                representativeAddress: REPRESENTATIVE,
+                walletBalanceRaw: giftWalletBalanceInt,
+                amountRaw: item.amount,
+                transactionHash: hash,
+                work: await get_work(hash),
+            };
 
-    // # Hack that waits for blocks to be confirmed
-    // time.sleep(4)
+            const signedBlock = block.receive(blockData, giftPrivateKey);
+
+            let resp = await rpc_call({ action: "process", json_block: true, subtype: "receive", block: signedBlock });
+            if (!!resp.hash) {
+                frontier = resp.hash;
+            }
+
+        } else {
+
+            // should be an open block:
+            let blockData = {
+                frontier: "0000000000000000000000000000000000000000000000000000000000000000",
+                toAddress: giftAccount,
+                representativeAddress: REPRESENTATIVE,
+                walletBalanceRaw: "0",
+                amountRaw: item.amount,
+                transactionHash: hash,
+                work: await get_work(giftPublicKey),
+            }
+
+            const signedBlock = block.receive(blockData, giftPrivateKey);
+            let resp = await rpc_call({ action: "process", json_block: true, subtype: "receive", block: signedBlock });
+            if (!!resp.hash) {
+                frontier = resp.hash;
+            }
+        }
+    }
+    // Hack that waits for blocks to be confirmed
+    //     time.sleep(4)
+
+
 
 
     // # get the gift frontier:
-    // giftFrontier = frontier
+    let giftFrontier = frontier;
 
-    // frontiers_resp = await rpc.json_post({"action": "frontiers", "count": 1, "account": giftAccount})
-    // if frontiers_resp.get("frontiers") == "":
-    //     giftFrontier = frontier
-    // else:
-    //     returnedFrontiers = frontiers_resp.get("frontiers")
-    //     for addr in returnedFrontiers.keys():
-    //         giftFrontier = returnedFrontiers[addr]
-    //         break
+    let frontiers_resp = await rpc_call({ "action": "frontiers", "count": 1, "account": giftAccount });
+    if (frontiers_resp.frontiers == "") {
+        giftFrontier = frontier
+    } else {
+        let returnedFrontiers = frontiers_resp.frontiers;
+        for (let addr in returnedFrontiers) {
+            giftFrontier = returnedFrontiers[addr];
+            break
+        }
+    }
 
-    // # get account_info (again) so we can be 100% sure of the balance:
-    // giftWalletBalanceInt = None
-    // response = await rpc.json_post({"action": "account_info", "account": giftAccount})
-    // if response.get("error") != None:
-    //     return json.dumps({"error": response.get("error")})
-    // else:
-    //     giftWalletBalanceInt = int(response.get("balance"))
 
+    // get account_info(again) so we can be 100 % sure of the balance:
+    giftWalletBalanceInt = null;
+    console.log(giftAccount);
+    response = await rpc_call({ "action": "account_info", "account": giftAccount });
+    if (!!response.error) {
+        return { "error": response.error };
+    } else {
+        giftWalletBalanceInt = BigInt(response.balance);
+    }
     // # send sendAmountRaw to the requester:
     // # get account_info:
-    // if giftWalletBalanceInt == None:
-    //     return json.dumps({"error": "giftWalletBalanceInt shouldn't be None"})
-    // elif giftWalletBalanceInt == 0:
-    //     # the gift wallet is empty, so we can't send anything:
-    //     return json.dumps({"error": "Gift wallet is empty!"})
+    if (!giftWalletBalanceInt) {
+        return { "error": "giftWalletBalanceInt shouldn't be None" };
+    } else if (giftWalletBalanceInt == BigInt(0)) {
+        // the gift wallet is empty, so we can't send anything:
+        return { "error": "Gift wallet is empty!" };
+    }
 
-    // newBalanceRaw = str(int(giftWalletBalanceInt) - int(sendAmountRaw))
+    let newBalanceRaw = BigInt(giftWalletBalanceInt) - BigInt(sendAmountRaw);
 
-    // if newBalanceRaw == None:
-    //     return json.dumps({"error": "newBalanceRaw is None"})
-    // elif int(newBalanceRaw) < 0:
-    //     # send whatever is left in the gift wallet:
-    //     newBalanceRaw = "0"
+    if (newBalanceRaw == null) {
+        return { "error": "newBalanceRaw is None" };
+    } else if (BigInt(newBalanceRaw) < BigInt(0)) {
+        // send whatever is left in the gift wallet:
+        newBalanceRaw = "0";
+    }
 
-    // # create the send block:
-    // sendBlock = {
-    //     "type": "state",
-    //     "account": giftAccount,
-    //     "previous": giftFrontier,
-    //     "representative": "nano_38713x95zyjsqzx6nm1dsom1jmm668owkeb9913ax6nfgj15az3nu8xkx579",
-    //     "balance": newBalanceRaw,
-    //     "destination": requestingAccount,
-    //     "link": get_account_public_key(account_id=requestingAccount),
-    //     "link_as_account": requestingAccount
-    // }
-    // signature = nanopy.sign(key=giftPrivateKey, block=sendBlock)
-    // sendBlock["signature"] = signature
+    // create the send block:
+    let sendBlock = {
+        // "account": giftAccount,
+        // "previous": giftFrontier,
+        // "representative": REPRESENTATIVE,
+        // "balance": newBalanceRaw,
+        // "destination": requestingAccount,
+        // "link": get_account_public_key(account_id = requestingAccount),
+        // "link_as_account": requestingAccount,
+        walletBalanceRaw: giftWalletBalanceInt.toString(),
+        fromAddress: giftAccount,
+        toAddress: requesting_account,
+        representativeAddress: REPRESENTATIVE,
+        frontier: giftFrontier,
+        amountRaw: sendAmountRaw,
+        work: await get_work(giftFrontier),
+    };
 
-    // resp = await rpc.process_defer(r, "fake_uid", sendBlock, True, subtype="send")
+    const signedBlock = block.send(sendBlock, giftPrivateKey);
 
-    // if resp.get("hash") == None:
-    //     return json.dumps({"error": "error sending to paper wallet: " + str(resp)})
+    let sendResp = await rpc_call({ action: "process", json_block: true, subtype: "send", block: signedBlock });
 
-    // # cache the response for this UUID:
-    // await r.app['rdata'].hset("gift_claims", splitID, "claimed")
+    if (!sendResp.hash) {
+        return { "error": "error sending to paper wallet: " + sendResp };
+    }
 
-    // return json.dumps({"success": True})
+    // cache the response for this UUID:
+    await redisClient.hSet("gift_claims", splitID, "claimed")
+
+    return { "success": true };
 }
 
 async function gift_info({ gift_uuid, requesting_account, requesting_device_uuid }) {
-    return null;
+    // console.info(`gift_info: ${gift_uuid} ${requesting_account} ${requesting_device_uuid}`);
+
+    // check if the gift exists:
+    let giftData = await redisClient.hGet("gift_data", gift_uuid);
+    if (!giftData) {
+        return { "error": "gift does not exist" };
+    }
+    giftData = JSON.parse(giftData);
+
+    if (!requesting_device_uuid || requesting_device_uuid == "") {
+        return { "error": "requesting_device_uuid is None" };
+    }
+
+    // # check if it was claimed by this user:
+    // # splitID = util.get_request_ip(r) + nonce_separator + giftUUID + nonce_separator + requestingAccount
+    // # splitID = util.get_request_ip(r) + nonce_separator + giftUUID
+    let splitID = requesting_device_uuid + nonce_separator + gift_uuid;
+    let claimed = await redisClient.hGet("gift_claims", splitID);
+    // todo: reenable:
+    if (!!claimed && !testing) {
+        return { "error": "gift has already been claimed" };
+    }
+
+    // check the balance of the gift wallet:
+    // let giftWalletSeed = giftData.seed;
+    // let giftWalletAccount = (await generate_account_from_seed(giftWalletSeed)).address;
+
+
+    // TODO: finish getting gift balance:
+    // giftWalletBalance = await rpc.json_post({"action": "account_balance", "account": giftWalletAccount})
+
+    let amount = giftData.split_amount_raw;
+    if (!amount) {
+        amount = giftData.get("amount_raw")
+    }
+
+    let returnable = {
+        "gift_uuid": gift_uuid,
+        "amount_raw": amount,
+        "memo": giftData.memo,
+        "from_address": giftData.from_address,
+    };
+
+    // if giftWalletBalance.get("balance") != None:
+    //     returnable["gift_wallet_balance"] = giftWalletBalance.get("balance")
+
+    return { "success": true, "gift_data": returnable };
 }
 
-app.get("/gift", async (req, res) => {
-
+app.post("/gift", async (req, res) => {
     // get request json:
     let request_json = req.body || {};
     let ret;
 
-    switch (request_json["action"]) {
+    switch (request_json.action) {
         case "gift_split_create":
             // # # check the signature:
             // # ret = await validate_signature(request_json.get("requesting_account"), request_json.get("request_signature"), request_json.get("request_nonce"))
             // # if ret == None:
             // #     pass
             ret = await gift_split_create(request_json);
-            if (ret != null) break;
-            ret = {
-                "success": true,
-                "link": ret["link"],
-                "gift_data": ret["gift_data"],
-            };
             break;
         case "gift_info":
             ret = await gift_info(request_json);
@@ -1338,6 +1425,9 @@ app.get("/gift", async (req, res) => {
             };
             break;
     }
+
+    console.log("RES:");
+    console.log(ret);
 
     res.json(ret);
 });
@@ -1385,7 +1475,7 @@ async function update_fcm_token_for_account(account, token) {
     if (!("data" in cur_list)) {
         cur_list['data'] = [];
     }
-    if (!(token in cur_list['data'])) {
+    if (!(cur_list['data'].includes(token))) {
         cur_list['data'].push(token);
     }
     await redisClient.set(account, JSON.stringify(cur_list));
@@ -1393,38 +1483,39 @@ async function update_fcm_token_for_account(account, token) {
 
 async function get_or_upgrade_token_account_list(account, token) {
     let curTokenList = await redisClient.get(token);
-    if (!!curTokenList) {
+    if (!curTokenList) {
         return [];
-    } else {
-        try {
-            let curToken = JSON.parse(curTokenList);
-            return curToken;
-        } catch (e) {
-            let curToken = curTokenList;
-            // CHECK (expire):
-            await redisClient.set(token, JSON.stringify([curToken]), "EX", MONTH_IN_SECONDS);
-            if (account != curToken) {
-                return [];
-            }
+    }
+
+    try {
+        let tokenList = JSON.parse(curTokenList);
+        return tokenList;
+    } catch (e) {
+        let token = curTokenList;
+        // CHECK (expire):
+        await redisClient.set(token, JSON.stringify([token]), "EX", MONTH_IN_SECONDS);
+        if (account != token) {
+            return [];
         }
     }
+
     return JSON.parse(await redisClient.get(token));
 }
 
 async function set_or_upgrade_token_account_list(account, token) {
     let curTokenList = await redisClient.get(token);
-    if (!!curTokenList) {
+    if (!curTokenList) {
         await redisClient.set(token, JSON.stringify([account]), "EX", MONTH_IN_SECONDS)
     } else {
         try {
-            let curToken = JSON.parse(curTokenList)
-            if (!(account in curToken)) {
-                curToken.push(account);
-                await redisClient.set(token, JSON.stringify(curToken), "EX", MONTH_IN_SECONDS);
+            let tokenList = JSON.parse(curTokenList);
+            if (!tokenList.includes(account)) {
+                tokenList.push(account);
+                await redisClient.set(token, JSON.stringify(tokenList), "EX", MONTH_IN_SECONDS);
             }
         } catch (e) {
-            let curToken = curTokenList
-            await redisClient.set(token, JSON.stringify([curToken]), "EX", MONTH_IN_SECONDS);
+            let token = curTokenList;
+            await redisClient.set(token, JSON.stringify([token]), "EX", MONTH_IN_SECONDS);
         }
     }
     // suspicious?:
@@ -1434,29 +1525,27 @@ async function set_or_upgrade_token_account_list(account, token) {
 async function get_fcm_tokens(account) {
     // """Return list of FCM tokens that belong to this account"""
     let tokens = await redisClient.get(account)
-    if (!tokens) return [];
+    if (!tokens) {
+        return [];
+    }
 
-    // // tokens = JSON.parse(tokens.replace('\'', '"'))
-    // tokens = JSON.parse(tokens);
-    // // Rebuild the list for this account removing tokens that dont belong anymore
-    // let new_token_list = {};
-    // new_token_list['data'] = [];
-    // if (!('data' in tokens)) {
-    //     return [];
-    // }
-    // for (let t of tokens['data']) {
-    //     let account_list = await get_or_upgrade_token_account_list(account, t);
-    //     // TODO: re-enable:
-    //     if (!account_list.includes(account)) {
-    //         continue;
-    //     }
-    //     new_token_list['data'].push(t)
-    // }
-    // await redisClient.set(account, JSON.stringify(new_token_list));
-    // // removes duplicates:
-    // return [...new Set(new_token_list['data'])];
-
-    console.log(tokens);
-
-    return [...new Set(tokens)];
+    tokens = JSON.parse(tokens);
+    // Rebuild the list for this account removing tokens that dont belong anymore
+    let new_token_list = {
+        data: [],
+    };
+    if (!('data' in tokens)) {
+        return [];
+    }
+    for (let t of tokens['data']) {
+        let account_list = await get_or_upgrade_token_account_list(account, t);
+        // TODO: re-enable:
+        if (!account_list.includes(account)) {
+            continue;
+        }
+        new_token_list['data'].push(t)
+    }
+    await redisClient.set(account, JSON.stringify(new_token_list));
+    // removes duplicates:
+    return [...new Set(new_token_list['data'])];
 }
