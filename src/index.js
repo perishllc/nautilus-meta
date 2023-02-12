@@ -2,6 +2,7 @@ import * as dotenv from "dotenv";
 dotenv.config()
 import express from "express";
 import axios, { isCancel, AxiosError } from "axios";
+import qs from "qs";
 import { tools, wallet, block } from "nanocurrency-web";
 import { createClient } from "redis";
 import { v4 as uuidv4 } from "uuid";
@@ -36,6 +37,7 @@ app.use(express.json());
 const port = process.env.PORT || 6001;
 app.listen(port, () => console.log(`listening on port ${port}`));
 
+const HCAPTCHA_SECRET_KEY = process.env.HCAPTCHA_SECRET_KEY;
 const REDIS_USERNAME = process.env.REDIS_USERNAME;
 const REDIS_PASSWORD = process.env.REDIS_PASSWORD;
 const REDIS_HOST = process.env.REDIS_HOST;
@@ -63,11 +65,11 @@ const nonce_separator = '^';
 
 // listen to nano node via websockets:
 
+const testing = false;
 const HTTP_URL = "http://node.perish.co:9076";
 const WS_URL = "ws://node.perish.co:9078";
 // const WORK_URL = "http://workers.perish.co:5555";
 const WORK_URL = "https://pow.nano.to";
-const testing = true;
 const REPRESENTATIVE = "nano_38713x95zyjsqzx6nm1dsom1jmm668owkeb9913ax6nfgj15az3nu8xkx579";
 
 async function rpc_call(data) {
@@ -113,7 +115,7 @@ async function confirmation_handler(message) {
         },
         {
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
-            "account": account,
+            "account": `${account}`,
         },
     );
 
@@ -213,6 +215,13 @@ app.get("/api", (req, res) => {
     });
 });
 
+app.get("/health", (req, res) => {
+    // return OK
+    res.json({
+        message: "OK"
+    });
+});
+
 
 
 app.get("/alerts/:lang", (req, res) => {
@@ -242,34 +251,34 @@ const ACTIVE_ALERTS = [
             "long_description": "The Nano network is experiencing issues.\n\nSome transactions may be significantly delayed, up to several days. We will keep our users updated with new information as the Nano team provides it.\n\nYou can read more by tapping \"Read More\" below.\n\nAll issues in regards to transaction delays are due to the Nano network issues, not Nautilus. We are not associated with the Nano Foundation or its developers.\n\nWe appreciate your patience during this time."
         },
         "sv": {
-            "title": "Nätverksproblem",
-            "short_description": "På grund av pågående problem med Nano-nätverket, finns det många fördröjda transaktioner.",
-            "long_description": "Nano-nätverket upplever problem som beror på en långvarig och pågående period med spamtransaktioner.\n\nNågra transaktioner kan dröja avsevärt, upp till flera dagar. Vi kommer att hålla våra användare uppdaterade med ny information så snart Nano-teamet förmedlar den.\n\nDu kan läsa mer genom att trycka på \"Läs Mer\" nedan.\n\nAlla problem som rör fördröjda transaktioner är på grund av nätverksproblem hos Nano. Vi är inte associerade med Nano Foundation eller dess utvecklare och kan därför inte påskynda långsamma transaktioner.\n\nVi uppskattar ditt tålamod under denna period.",
+            "title": "NÃ¤tverksproblem",
+            "short_description": "PÃ¥ grund av pÃ¥gÃ¥ende problem med Nano-nÃ¤tverket, finns det mÃ¥nga fÃ¶rdrÃ¶jda transaktioner.",
+            "long_description": "Nano-nÃ¤tverket upplever problem som beror pÃ¥ en lÃ¥ngvarig och pÃ¥gÃ¥ende period med spamtransaktioner.\n\nNÃ¥gra transaktioner kan drÃ¶ja avsevÃ¤rt, upp till flera dagar. Vi kommer att hÃ¥lla vÃ¥ra anvÃ¤ndare uppdaterade med ny information sÃ¥ snart Nano-teamet fÃ¶rmedlar den.\n\nDu kan lÃ¤sa mer genom att trycka pÃ¥ \"LÃ¤s Mer\" nedan.\n\nAlla problem som rÃ¶r fÃ¶rdrÃ¶jda transaktioner Ã¤r pÃ¥ grund av nÃ¤tverksproblem hos Nano. Vi Ã¤r inte associerade med Nano Foundation eller dess utvecklare och kan dÃ¤rfÃ¶r inte pÃ¥skynda lÃ¥ngsamma transaktioner.\n\nVi uppskattar ditt tÃ¥lamod under denna period.",
         },
         "es": {
             "title": "Problemas de red",
             "short_description": "Debido a problemas continuos con la red Nano, muchas transacciones se retrasan.",
-            "long_description": "La red Nano está experimentando problemas causados ​​por un período prolongado y continuo de transacciones de spam.\n\nAlgunas transacciones pueden retrasarse significativamente, hasta varios días. Mantendremos a nuestros usuarios actualizados con nueva información a medida que el equipo de Nano la proporcione.\n\nPuede leer más apretando \"Leer Más\" abajo\n\nTodos los problemas relacionados con las demoras en las transacciones se deben a problemas de la red Nano, no Natrium. No estamos asociados con la Nano Foundation o sus desarrolladores y no podemos hacer nada para acelerar las transacciones lentas.\n\nAgradecemos su paciencia durante este tiempo.",
+            "long_description": "La red Nano estÃ¡ experimentando problemas causados â€‹â€‹por un perÃ­odo prolongado y continuo de transacciones de spam.\n\nAlgunas transacciones pueden retrasarse significativamente, hasta varios dÃ­as. Mantendremos a nuestros usuarios actualizados con nueva informaciÃ³n a medida que el equipo de Nano la proporcione.\n\nPuede leer mÃ¡s apretando \"Leer MÃ¡s\" abajo\n\nTodos los problemas relacionados con las demoras en las transacciones se deben a problemas de la red Nano, no Natrium. No estamos asociados con la Nano Foundation o sus desarrolladores y no podemos hacer nada para acelerar las transacciones lentas.\n\nAgradecemos su paciencia durante este tiempo.",
         },
         "tr": {
-            "title": "Ağ Problemleri",
-            "short_description": "Nano ağında devam eden spam problemi nedeniyle bir çok işlem gecikmekte.",
-            "long_description": "Nano ağı bir süredir devam eden spam nedeniyle problem yaşıyor.\n\nBazı işlemleriniz bir kaç gün süren gecikmelere maruz kalabilir. Nano takımının vereceği güncel haberleri size ileteceğiz.\n\nAşağıdaki \"Detaylı Bilgi\" butonuna dokunarak daha detaylı bilgi alabilirsiniz.\n\nİşlem gecikmeleriyle alakalı bu problemler Natrium'dan değil, Nano ağının kendisinden kaynaklı. Nano Foundation veya geliştiricileriyle bir bağımız olmadığı için işlemlerinizi hızlandırabilmek için şu noktada yapabileceğimiz bir şey ne yazık ki yok.\n\nAnlayışınız ve sabrınız için teşekkür ederiz."
+            "title": "AÄŸ Problemleri",
+            "short_description": "Nano aÄŸÄ±nda devam eden spam problemi nedeniyle bir Ã§ok iÅŸlem gecikmekte.",
+            "long_description": "Nano aÄŸÄ± bir sÃ¼redir devam eden spam nedeniyle problem yaÅŸÄ±yor.\n\nBazÄ± iÅŸlemleriniz bir kaÃ§ gÃ¼n sÃ¼ren gecikmelere maruz kalabilir. Nano takÄ±mÄ±nÄ±n vereceÄŸi gÃ¼ncel haberleri size ileteceÄŸiz.\n\nAÅŸaÄŸÄ±daki \"DetaylÄ± Bilgi\" butonuna dokunarak daha detaylÄ± bilgi alabilirsiniz.\n\nÄ°ÅŸlem gecikmeleriyle alakalÄ± bu problemler Natrium'dan deÄŸil, Nano aÄŸÄ±nÄ±n kendisinden kaynaklÄ±. Nano Foundation veya geliÅŸtiricileriyle bir baÄŸÄ±mÄ±z olmadÄ±ÄŸÄ± iÃ§in iÅŸlemlerinizi hÄ±zlandÄ±rabilmek iÃ§in ÅŸu noktada yapabileceÄŸimiz bir ÅŸey ne yazÄ±k ki yok.\n\nAnlayÄ±ÅŸÄ±nÄ±z ve sabrÄ±nÄ±z iÃ§in teÅŸekkÃ¼r ederiz."
         },
         "ja": {
-            "title": "ネットワークエラー",
-            "short_description": "Nanoネットワークの継続的な問題により、多くの取引が遅延しています。",
-            "long_description": "Nanoネットワークでは、スパムの取引が長期間継続することによって問題が発生しています。\n\n一部の取引は最大数日遅れる場合があります。Nanoチームが提供する新しい情報で、皆さんを最新の状態に保ちます。\n\n 詳しくは\"詳しくは\"ボタンをクリックして下さい。\n\n取引の遅延に関するすべての問題は、Natriumではなく、Nanoネットワークの問題が原因です。NatriumはNano Foundationやその開発者とは関係がなく、遅い取引をスピードアップするために何もすることはできません。\n\nご理解お願いいたします。",
+            "title": "ãƒãƒƒãƒˆãƒ¯ãƒ¼ã‚¯ã‚¨ãƒ©ãƒ¼",
+            "short_description": "Nanoãƒãƒƒãƒˆãƒ¯ãƒ¼ã‚¯ã®ç¶™ç¶šçš„ãªå•é¡Œã«ã‚ˆã‚Šã€å¤šãã®å–å¼•ãŒé…å»¶ã—ã¦ã„ã¾ã™ã€‚",
+            "long_description": "Nanoãƒãƒƒãƒˆãƒ¯ãƒ¼ã‚¯ã§ã¯ã€ã‚¹ãƒ‘ãƒ ã®å–å¼•ãŒé•·æœŸé–“ç¶™ç¶šã™ã‚‹ã“ã¨ã«ã‚ˆã£ã¦å•é¡ŒãŒç™ºç”Ÿã—ã¦ã„ã¾ã™ã€‚\n\nä¸€éƒ¨ã®å–å¼•ã¯æœ€å¤§æ•°æ—¥é…ã‚Œã‚‹å ´åˆãŒã‚ã‚Šã¾ã™ã€‚Nanoãƒãƒ¼ãƒ ãŒæä¾›ã™ã‚‹æ–°ã—ã„æƒ…å ±ã§ã€çš†ã•ã‚“ã‚’æœ€æ–°ã®çŠ¶æ…‹ã«ä¿ã¡ã¾ã™ã€‚\n\n è©³ã—ãã¯\"è©³ã—ãã¯\"ãƒœã‚¿ãƒ³ã‚’ã‚¯ãƒªãƒƒã‚¯ã—ã¦ä¸‹ã•ã„ã€‚\n\nå–å¼•ã®é…å»¶ã«é–¢ã™ã‚‹ã™ã¹ã¦ã®å•é¡Œã¯ã€Natriumã§ã¯ãªãã€Nanoãƒãƒƒãƒˆãƒ¯ãƒ¼ã‚¯ã®å•é¡ŒãŒåŽŸå› ã§ã™ã€‚Natriumã¯Nano Foundationã‚„ãã®é–‹ç™ºè€…ã¨ã¯é–¢ä¿‚ãŒãªãã€é…ã„å–å¼•ã‚’ã‚¹ãƒ”ãƒ¼ãƒ‰ã‚¢ãƒƒãƒ—ã™ã‚‹ãŸã‚ã«ä½•ã‚‚ã™ã‚‹ã“ã¨ã¯ã§ãã¾ã›ã‚“ã€‚\n\nã”ç†è§£ãŠé¡˜ã„ã„ãŸã—ã¾ã™ã€‚",
         },
         "de": {
             "title": "Netzwerkprobleme",
-            "short_description": "Aufgrund von anhaltenden Problemen mit dem Nano-Netzwerk sind aktuell viele Transaktionen verzögert.",
-            "long_description": "Das Nano-Netzwerk kämpft derzeit mit Problemen, die durch eine lang andauernde Serie von Spam-Transaktionen verursacht wurden.\n\nManche Transaktionen können daher stark verzögert sein, teilweise um bis zu mehrere Tage. Wir werden unsere Nutzer über wichtige Neuigkeiten informieren, sobald das Nano-Team diese veröffentlicht.\n\nErfahre mehr, indem du auf \"Mehr Infos\" klickst.\n\nDie Probleme mit verzögerten Transaktionen sind verursacht durch das Nano-Netzwerk, nicht durch Natrium. Wir stehen in keinem Zusammenhang mit der Nano Foundation oder ihren Entwicklern und können daher nichts tun, um die Transaktionen zu beschleunigen.\n\nVielen Dank für dein Verständnis.",
+            "short_description": "Aufgrund von anhaltenden Problemen mit dem Nano-Netzwerk sind aktuell viele Transaktionen verzÃ¶gert.",
+            "long_description": "Das Nano-Netzwerk kÃ¤mpft derzeit mit Problemen, die durch eine lang andauernde Serie von Spam-Transaktionen verursacht wurden.\n\nManche Transaktionen kÃ¶nnen daher stark verzÃ¶gert sein, teilweise um bis zu mehrere Tage. Wir werden unsere Nutzer Ã¼ber wichtige Neuigkeiten informieren, sobald das Nano-Team diese verÃ¶ffentlicht.\n\nErfahre mehr, indem du auf \"Mehr Infos\" klickst.\n\nDie Probleme mit verzÃ¶gerten Transaktionen sind verursacht durch das Nano-Netzwerk, nicht durch Natrium. Wir stehen in keinem Zusammenhang mit der Nano Foundation oder ihren Entwicklern und kÃ¶nnen daher nichts tun, um die Transaktionen zu beschleunigen.\n\nVielen Dank fÃ¼r dein VerstÃ¤ndnis.",
         },
         "fr": {
-            "title": "Problèmes de réseau",
-            "short_description": "En raison des problèmes en cours avec le réseau Nano, de nombreuses transactions sont retardées.",
-            "long_description": "Le réseau Nano connaît des problèmes causés par une période prolongée et continue de transactions de spam.\n\nCertaines transactions peuvent être considérablement retardées, jusqu'à plusieurs jours. Nous tiendrons nos utilisateurs à jour avec de nouvelles informations au fur et à mesure que l'équipe Nano les fournira.\n\nVous pouvez en savoir plus en appuyant sur \"Lire la suite\" ci-dessous.\n\nTous les problèmes liés aux retards de transaction sont dus aux problèmes de réseau Nano, et non à Natrium. Nous ne sommes pas associés à la Fondation Nano ou à ses développeurs et ne pouvons rien faire pour accélérer les transactions lentes.\n\nNous apprécions votre patience pendant cette période.",
+            "title": "ProblÃ¨mes de rÃ©seau",
+            "short_description": "En raison des problÃ¨mes en cours avec le rÃ©seau Nano, de nombreuses transactions sont retardÃ©es.",
+            "long_description": "Le rÃ©seau Nano connaÃ®t des problÃ¨mes causÃ©s par une pÃ©riode prolongÃ©e et continue de transactions de spam.\n\nCertaines transactions peuvent Ãªtre considÃ©rablement retardÃ©es, jusqu'Ã  plusieurs jours. Nous tiendrons nos utilisateurs Ã  jour avec de nouvelles informations au fur et Ã  mesure que l'Ã©quipe Nano les fournira.\n\nVous pouvez en savoir plus en appuyant sur \"Lire la suite\" ci-dessous.\n\nTous les problÃ¨mes liÃ©s aux retards de transaction sont dus aux problÃ¨mes de rÃ©seau Nano, et non Ã  Natrium. Nous ne sommes pas associÃ©s Ã  la Fondation Nano ou Ã  ses dÃ©veloppeurs et ne pouvons rien faire pour accÃ©lÃ©rer les transactions lentes.\n\nNous apprÃ©cions votre patience pendant cette pÃ©riode.",
         },
         "nl": {
             "title": "Netwerkproblemen",
@@ -282,14 +291,14 @@ const ACTIVE_ALERTS = [
             "long_description": "Jaringan Nano mengalami masalah yang disebabkan oleh periode transaksi spam yang berkepanjangan dan berkelanjutan.\n\nBeberapa transaksi mungkin tertunda secara signifikan, hingga beberapa hari. Kami akan terus memperbarui informasi baru kepada pengguna kami saat tim Nano menyediakannya.\n\nAnda dapat membaca selengkapnya dengan mengetuk \"Baca Selengkapnya\" di bawah.\n\nSemua masalah terkait penundaan transaksi disebabkan oleh masalah jaringan Nano, bukan Natrium. Kami tidak terkait dengan Nano Foundation atau pengembangnya dan tidak dapat melakukan apa pun untuk mempercepat transaksi yang lambat.\n\nKami menghargai kesabaran anda selama ini.",
         },
         "ru": {
-            "title": "Проблемы с сетью",
-            "short_description": "Из-за текущих проблем с сетью Nano многие транзакции задерживаются.",
-            "long_description": "В сети Nano возникают проблемы, вызванные продолжительным периодом спам-транзакций.\n\nНекоторые транзакции могут быть значительно задержаны, до нескольких дней. Мы будем держать наших пользователей в курсе новой информации, поскольку команда Nano  предоставляет его.\n\nВы можете узнать больше, нажав \"Подробнее\" ниже.\n\nВсе проблемы, связанные с задержками транзакций, вызваны проблемами сети Nano, а не Natrium. Мы не связаны с Nano Foundation его разработчики не могут ничего сделать для ускорения медленных  транзакций.\n\nМы благодарим вас за терпение в это время.",
+            "title": "ÐŸÑ€Ð¾Ð±Ð»ÐµÐ¼Ñ‹ Ñ ÑÐµÑ‚ÑŒÑŽ",
+            "short_description": "Ð˜Ð·-Ð·Ð° Ñ‚ÐµÐºÑƒÑ‰Ð¸Ñ… Ð¿Ñ€Ð¾Ð±Ð»ÐµÐ¼ Ñ ÑÐµÑ‚ÑŒÑŽ Nano Ð¼Ð½Ð¾Ð³Ð¸Ðµ Ñ‚Ñ€Ð°Ð½Ð·Ð°ÐºÑ†Ð¸Ð¸ Ð·Ð°Ð´ÐµÑ€Ð¶Ð¸Ð²Ð°ÑŽÑ‚ÑÑ.",
+            "long_description": "Ð’ ÑÐµÑ‚Ð¸ Nano Ð²Ð¾Ð·Ð½Ð¸ÐºÐ°ÑŽÑ‚ Ð¿Ñ€Ð¾Ð±Ð»ÐµÐ¼Ñ‹, Ð²Ñ‹Ð·Ð²Ð°Ð½Ð½Ñ‹Ðµ Ð¿Ñ€Ð¾Ð´Ð¾Ð»Ð¶Ð¸Ñ‚ÐµÐ»ÑŒÐ½Ñ‹Ð¼ Ð¿ÐµÑ€Ð¸Ð¾Ð´Ð¾Ð¼ ÑÐ¿Ð°Ð¼-Ñ‚Ñ€Ð°Ð½Ð·Ð°ÐºÑ†Ð¸Ð¹.\n\nÐÐµÐºÐ¾Ñ‚Ð¾Ñ€Ñ‹Ðµ Ñ‚Ñ€Ð°Ð½Ð·Ð°ÐºÑ†Ð¸Ð¸ Ð¼Ð¾Ð³ÑƒÑ‚ Ð±Ñ‹Ñ‚ÑŒ Ð·Ð½Ð°Ñ‡Ð¸Ñ‚ÐµÐ»ÑŒÐ½Ð¾ Ð·Ð°Ð´ÐµÑ€Ð¶Ð°Ð½Ñ‹, Ð´Ð¾ Ð½ÐµÑÐºÐ¾Ð»ÑŒÐºÐ¸Ñ… Ð´Ð½ÐµÐ¹. ÐœÑ‹ Ð±ÑƒÐ´ÐµÐ¼ Ð´ÐµÑ€Ð¶Ð°Ñ‚ÑŒ Ð½Ð°ÑˆÐ¸Ñ… Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»ÐµÐ¹ Ð² ÐºÑƒÑ€ÑÐµ Ð½Ð¾Ð²Ð¾Ð¹ Ð¸Ð½Ñ„Ð¾Ñ€Ð¼Ð°Ñ†Ð¸Ð¸, Ð¿Ð¾ÑÐºÐ¾Ð»ÑŒÐºÑƒ ÐºÐ¾Ð¼Ð°Ð½Ð´Ð° Nano  Ð¿Ñ€ÐµÐ´Ð¾ÑÑ‚Ð°Ð²Ð»ÑÐµÑ‚ ÐµÐ³Ð¾.\n\nÐ’Ñ‹ Ð¼Ð¾Ð¶ÐµÑ‚Ðµ ÑƒÐ·Ð½Ð°Ñ‚ÑŒ Ð±Ð¾Ð»ÑŒÑˆÐµ, Ð½Ð°Ð¶Ð°Ð² \"ÐŸÐ¾Ð´Ñ€Ð¾Ð±Ð½ÐµÐµ\" Ð½Ð¸Ð¶Ðµ.\n\nÐ’ÑÐµ Ð¿Ñ€Ð¾Ð±Ð»ÐµÐ¼Ñ‹, ÑÐ²ÑÐ·Ð°Ð½Ð½Ñ‹Ðµ Ñ Ð·Ð°Ð´ÐµÑ€Ð¶ÐºÐ°Ð¼Ð¸ Ñ‚Ñ€Ð°Ð½Ð·Ð°ÐºÑ†Ð¸Ð¹, Ð²Ñ‹Ð·Ð²Ð°Ð½Ñ‹ Ð¿Ñ€Ð¾Ð±Ð»ÐµÐ¼Ð°Ð¼Ð¸ ÑÐµÑ‚Ð¸ Nano, Ð° Ð½Ðµ Natrium. ÐœÑ‹ Ð½Ðµ ÑÐ²ÑÐ·Ð°Ð½Ñ‹ Ñ Nano Foundation ÐµÐ³Ð¾ Ñ€Ð°Ð·Ñ€Ð°Ð±Ð¾Ñ‚Ñ‡Ð¸ÐºÐ¸ Ð½Ðµ Ð¼Ð¾Ð³ÑƒÑ‚ Ð½Ð¸Ñ‡ÐµÐ³Ð¾ ÑÐ´ÐµÐ»Ð°Ñ‚ÑŒ Ð´Ð»Ñ ÑƒÑÐºÐ¾Ñ€ÐµÐ½Ð¸Ñ Ð¼ÐµÐ´Ð»ÐµÐ½Ð½Ñ‹Ñ…  Ñ‚Ñ€Ð°Ð½Ð·Ð°ÐºÑ†Ð¸Ð¹.\n\nÐœÑ‹ Ð±Ð»Ð°Ð³Ð¾Ð´Ð°Ñ€Ð¸Ð¼ Ð²Ð°Ñ Ð·Ð° Ñ‚ÐµÑ€Ð¿ÐµÐ½Ð¸Ðµ Ð² ÑÑ‚Ð¾ Ð²Ñ€ÐµÐ¼Ñ.",
         },
         "da": {
-            "title": "Netværksproblemer",
-            "short_description": "På grund af igangværende problemer med Nano-netværket er der mange forsinkede transaktioner.",
-            "long_description": "Nano-netværket oplever problemer på grund af en lang og løbende periode med spamtransaktioner.\n\nNogle transaktioner kan tage lang tid, op til flere dage. Vi holder vores brugere opdateret med nye oplysninger, så snart Nano-teamet giver dem.\n\nDu kan læse mere ved at klikke \"Læs mere\" nedenfor.\n\nAlle problemer med hensyn til transaktionsforsinkelser skyldes problemer med Nano-netværket, ikke Natrium. Vi er ikke tilknyttet Nano Foundation eller dets udviklere og kan ikke gøre noget for at fremskynde langsomme transaktioner.\n\nVi sætter pris på din tålmodighed i denne periode.",
+            "title": "NetvÃ¦rksproblemer",
+            "short_description": "PÃ¥ grund af igangvÃ¦rende problemer med Nano-netvÃ¦rket er der mange forsinkede transaktioner.",
+            "long_description": "Nano-netvÃ¦rket oplever problemer pÃ¥ grund af en lang og lÃ¸bende periode med spamtransaktioner.\n\nNogle transaktioner kan tage lang tid, op til flere dage. Vi holder vores brugere opdateret med nye oplysninger, sÃ¥ snart Nano-teamet giver dem.\n\nDu kan lÃ¦se mere ved at klikke \"LÃ¦s mere\" nedenfor.\n\nAlle problemer med hensyn til transaktionsforsinkelser skyldes problemer med Nano-netvÃ¦rket, ikke Natrium. Vi er ikke tilknyttet Nano Foundation eller dets udviklere og kan ikke gÃ¸re noget for at fremskynde langsomme transaktioner.\n\nVi sÃ¦tter pris pÃ¥ din tÃ¥lmodighed i denne periode.",
         }
     },
     {
@@ -678,14 +687,14 @@ async function push_payment_request(account, amount_raw, requesting_account, mem
         },
         {
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
-            "account": account,
+            "account": `${account}`,
             "payment_request": "true",
-            "uuid": request_uuid,
-            "local_uuid": local_uuid,
+            "uuid": `${request_uuid}`,
+            "local_uuid": `${local_uuid}`,
             "memo_enc": `${memo_enc}`,
             "amount_raw": `${amount_raw}`,
-            "requesting_account": requesting_account,
-            "requesting_account_shorthand": shorthand_account,
+            "requesting_account": `${requesting_account}`,
+            "requesting_account_shorthand": `${shorthand_account}`,
             "request_time": `${request_time}`
         },
     );
@@ -705,12 +714,12 @@ async function push_payment_request(account, amount_raw, requesting_account, mem
     await send_notification(fcm_tokens_v2,
         {},
         {
-            "account": account,
+            "account": `${account}`,
             "payment_record": "true",
             "is_request": "true",
             "memo_enc": `${memo_enc}`,
-            "uuid": request_uuid,
-            "local_uuid": local_uuid,
+            "uuid": `${request_uuid}`,
+            "local_uuid": `${local_uuid}`,
             "amount_raw": `${amount_raw}`,
             "requesting_account": requesting_account,
             "requesting_account_shorthand": shorthand_account,
@@ -763,27 +772,20 @@ async function push_payment_memo(account, requesting_account, memo_enc, block, l
     let request_time = parseInt(Date.now() / 1000);
 
     // # send memo to the recipient
-    for (let token of fcm_tokens_v2) {
-        let message = {
-            token: token,
-            data: {
-                // # "click_action": "FLUTTER_NOTIFICATION_CLICK",
-                "account": account,
-                "requesting_account": requesting_account,
-                "payment_memo": True,
-                "memo_enc": str(memo_enc),
-                "block": str(block),
-                "uuid": request_uuid,
-                "local_uuid": local_uuid,
-                "request_time": request_time
-            },
-        }
-        await messaging.send(message).then((response) => {
-            console.log('Successfully sent message:', response);
-        }).catch((error) => {
-            console.error('Error sending message:', error);
-        });
-    }
+    await send_notification(fcm_tokens_v2,
+        {},
+        {
+            // # "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "account": account,
+            "requesting_account": requesting_account,
+            "payment_memo": "true",
+            "memo_enc": `${memo_enc}`,
+            "block": `${block}`,
+            "uuid": request_uuid,
+            "local_uuid": local_uuid,
+            "request_time": `${request_time}`
+        },
+    );
 
     // # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
     // # also push to the requesting account, so they get the uuid
@@ -794,31 +796,25 @@ async function push_payment_memo(account, requesting_account, memo_enc, block, l
         return "no_tokens"
     }
 
-    for (let token of fcm_tokens_v2) {
-        let message = {
-            token: token,
-            data: {
-                // # "click_action": "FLUTTER_NOTIFICATION_CLICK",
-                "account": account,
-                "requesting_account": requesting_account,
-                "payment_record": "true",
-                "is_memo": "true",
-                "memo_enc": `${memo_enc}`,
-                "uuid": request_uuid,
-                "local_uuid": local_uuid,
-                "block": `${block}`,
-                // # "amount_raw": str(send_amount),
-                // # "requesting_account": requesting_account,
-                // # "requesting_account_shorthand": shorthand_account,
-                "request_time": `${request_time}`
-            },
-        };
-        await messaging.send(message).then((response) => {
-            console.log('Successfully sent message:', response);
-        }).catch((error) => {
-            console.error('Error sending message:', error);
-        });
-    }
+    await send_notification(fcm_tokens_v2,
+        {},
+        {
+            // # "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "account": `${account}`,
+            "requesting_account": `${requesting_account}`,
+            "payment_record": "true",
+            "is_memo": "true",
+            "memo_enc": `${memo_enc}`,
+            "uuid": `${request_uuid}`,
+            "local_uuid": `${local_uuid}`,
+            "block": `${block}`,
+            // # "amount_raw": str(send_amount),
+            // # "requesting_account": requesting_account,
+            // # "requesting_account_shorthand": shorthand_account,
+            "request_time": `${request_time}`
+        },
+    );
+
     return null;
 }
 
@@ -851,14 +847,14 @@ async function push_payment_message(account, requesting_account, memo_enc, local
             },
             data: {
                 "click_action": "FLUTTER_NOTIFICATION_CLICK",
-                "account": account,
-                "payment_message": True,
-                "uuid": request_uuid,
-                "local_uuid": local_uuid,
-                "memo_enc": str(memo_enc),
-                "requesting_account": requesting_account,
-                "requesting_account_shorthand": shorthand_account,
-                "request_time": request_time
+                "account": `${account}`,
+                "payment_message": "true",
+                "uuid": `${request_uuid}`,
+                "local_uuid": `${local_uuid}`,
+                "memo_enc": `${memo_enc}`,
+                "requesting_account": `${requesting_account}`,
+                "requesting_account_shorthand": `${shorthand_account}`,
+                "request_time": `${request_time}`
             },
         };
         await messaging.send(message).then((response) => {
@@ -1120,8 +1116,10 @@ async function gift_split_create({ seed, split_amount_raw, memo, requesting_acco
     return { success: true, link: branchLink, gift_data: giftData };
 }
 
-async function gift_claim({ gift_uuid, requesting_account, requesting_device_uuid }) {
-    // # get the gift data from the db
+const sleep = time => new Promise(res => setTimeout(res, time));
+
+async function gift_claim({ gift_uuid, requesting_account, requesting_device_uuid }, headers) {
+    // get the gift data from the db
     let giftData = await redisClient.hGet("gift_data", gift_uuid);
     giftData = JSON.parse(giftData);
     let giftUUID = giftData.gift_uuid;
@@ -1145,30 +1143,45 @@ async function gift_claim({ gift_uuid, requesting_account, requesting_device_uui
     if (requireCaptcha) {
         // TODO:
 
-        // if 'hcaptcha-token' in r.headers:
-        //     hcaptchaToken = r.headers.get('hcaptcha-token')
+        console.log(headers);
 
-        //     // # post to hcaptcha to verify the token:
-        //     let data = {
-        //         "response": hcaptchaToken,
-        //         "secret": hcaptcha_secret_key,
-        //     };
+        if (!!headers["hcaptcha-token"]) {
 
-        //     // response = requests.post("https://hcaptcha.com/siteverify", data=data)
+            let hcaptchaToken = headers["hcaptcha-token"];
 
-        //     // if response.json().get("success") != True {
-        //     //     return json.dumps({"error": "hcaptcha-token invalid!"})
-        //     // }
-        // } else {
-        //     return {"error": "no hcaptcha-token!"};
-        // }
+            // // post to hcaptcha to verify the token:
+            // let resp = await axios.post("https://hcaptcha.com/siteverify", qs.stringify({
+            //     "response": hcaptchaToken,
+            //     "secret": HCAPTCHA_SECRET_KEY,
+            // }), {
+            //     headers: {
+            //         'Accept-Encoding': 'application/json',
+            //         'Content-Type': 'application/x-www-form-urlencoded'
+            //     },
+            // });
+            // console.log(resp.data);
+
+
+            // TODO:
+            if (hcaptchaToken.length < 30) {
+                return { "error": "hcaptcha-token invalid!" };
+            }
+
+            // response = requests.post("https://hcaptcha.com/siteverify", data=data)
+
+            // if response.json().get("success") != true {
+            //     return json.dumps({"error": "hcaptcha-token invalid!"})
+            // }
+        } else {
+            return { "error": "no hcaptcha-token!" };
+        }
     }
 
     let sendAmountRaw = null;
     if (!!splitAmountRaw) {
-        sendAmountRaw = splitAmountRaw
+        sendAmountRaw = splitAmountRaw;
     } else if (!!amountRaw) {
-        sendAmountRaw = amountRaw
+        sendAmountRaw = amountRaw;
     }
 
     if (!sendAmountRaw) {
@@ -1194,7 +1207,7 @@ async function gift_claim({ gift_uuid, requesting_account, requesting_device_uui
         return { "error": "gift has already been claimed" };
     }
 
-    let giftSeed = seed
+    let giftSeed = seed;
     let giftAccount = (await generate_account_from_seed(giftSeed)).address;
     let giftPrivateKey = (await generate_account_from_seed(giftSeed)).privateKey;
     let giftPublicKey = (await generate_account_from_seed(giftSeed)).publicKey;
@@ -1271,8 +1284,7 @@ async function gift_claim({ gift_uuid, requesting_account, requesting_device_uui
         }
     }
     // Hack that waits for blocks to be confirmed
-    //     time.sleep(4)
-
+    await sleep(4000);
 
 
 
@@ -1320,13 +1332,6 @@ async function gift_claim({ gift_uuid, requesting_account, requesting_device_uui
 
     // create the send block:
     let sendBlock = {
-        // "account": giftAccount,
-        // "previous": giftFrontier,
-        // "representative": REPRESENTATIVE,
-        // "balance": newBalanceRaw,
-        // "destination": requestingAccount,
-        // "link": get_account_public_key(account_id = requestingAccount),
-        // "link_as_account": requestingAccount,
         walletBalanceRaw: giftWalletBalanceInt.toString(),
         fromAddress: giftAccount,
         toAddress: requesting_account,
@@ -1392,6 +1397,7 @@ async function gift_info({ gift_uuid, requesting_account, requesting_device_uuid
         "amount_raw": amount,
         "memo": giftData.memo,
         "from_address": giftData.from_address,
+        require_captcha: giftData.require_captcha,
     };
 
     // if giftWalletBalance.get("balance") != None:
@@ -1417,7 +1423,7 @@ app.post("/gift", async (req, res) => {
             ret = await gift_info(request_json);
             break;
         case "gift_claim":
-            ret = await gift_claim(request_json);
+            ret = await gift_claim(request_json, req.headers);
             break;
         default:
             ret = {

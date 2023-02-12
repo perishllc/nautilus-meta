@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meta-deployment
+  labels:
+    app: perish-meta
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: perish-meta
+  template:
+    metadata:
+      labels:
+        app: perish-meta
+    spec:
+      containers:
+      - name: perish-meta
+        image: fossephate/meta:latest
+        command: ["/bin/bash", "-c"]
+        args: ["npm start"]
+        ports:
+        - containerPort: 6001
+          name: api
+        # env:
+        #   - name: REDIS_HOST
+        #     value: redis.redis
+        #   - name: REDIS_DB
+        #     value: "1"
+        #   - name: BPOW_KEY
+        #     valueFrom:
+        #       secretKeyRef:
+        #         name: betsy
+        #         key: bpow_key
+      # nodeSelector:
+      #   node-pool: workers
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: meta-service
+  annotations:
+    service.beta.kubernetes.io/do-loadbalancer-name: "meta"
+    service.beta.kubernetes.io/do-loadbalancer-size-unit: "1"
+  #   # kubernetes.digitalocean.com/load-balancer-id: "89601a6b-9be4-4ad8-b52c-37bc23810481"
+  #   service.beta.kubernetes.io/do-loadbalancer-disable-lets-encrypt-dns-records: "false"
+  #   # service.beta.kubernetes.io/do-loadbalancer-protocol: "http"
+    # service.beta.kubernetes.io/do-loadbalancer-protocol: "https"
+    # service.beta.kubernetes.io/do-loadbalancer-certificate-id: "a32d2a79-4623-4b33-92ab-b4cff1eddb79"
+  #   service.beta.kubernetes.io/do-loadbalancer-tls-ports: "443"
+  #   service.beta.kubernetes.io/do-loadbalancer-disable-lets-encrypt-dns-records: "false"
+  #   # service.beta.kubernetes.io/do-loadbalancer-enable-proxy-protocol: "true"
+    service.beta.kubernetes.io/do-loadbalancer-healthcheck-port: "6001"
+    service.beta.kubernetes.io/do-loadbalancer-healthcheck-protocol: "http"
+    service.beta.kubernetes.io/do-loadbalancer-healthcheck-path: "/health"
+    service.beta.kubernetes.io/do-loadbalancer-enable-backend-keepalive: "true"
+spec:
+  type: LoadBalancer
+  selector:
+    app: perish-meta
+  ports:
+    - port: 80
+      targetPort: 6001

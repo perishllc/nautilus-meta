@@ -4,6 +4,7 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
 var dotenv = _interopRequireWildcard(require("dotenv"));
 var _express = _interopRequireDefault(require("express"));
 var _axios = _interopRequireWildcard(require("axios"));
+var _qs = _interopRequireDefault(require("qs"));
 var _nanocurrencyWeb = require("nanocurrency-web");
 var _redis = require("redis");
 var _uuid = require("uuid");
@@ -51,6 +52,7 @@ var port = process.env.PORT || 6001;
 app.listen(port, function () {
   return console.log("listening on port ".concat(port));
 });
+var HCAPTCHA_SECRET_KEY = process.env.HCAPTCHA_SECRET_KEY;
 var REDIS_USERNAME = process.env.REDIS_USERNAME;
 var REDIS_PASSWORD = process.env.REDIS_PASSWORD;
 var REDIS_HOST = process.env.REDIS_HOST;
@@ -73,42 +75,104 @@ redisClient.select(2, function (err, res) {
 
 var fcm_api_key = process.env.FCM_API_KEY;
 var MONTH_IN_SECONDS = 2592000;
+var nonce_timeout_seconds = 100;
+var nonce_separator = '^';
 
 // listen to nano node via websockets:
 
-var WS_URL = "ws://98.35.209.116:7078";
-function confirmation_handler(_x) {
-  return _confirmation_handler.apply(this, arguments);
+var testing = false;
+var HTTP_URL = "http://node.perish.co:9076";
+var WS_URL = "ws://node.perish.co:9078";
+// const WORK_URL = "http://workers.perish.co:5555";
+var WORK_URL = "https://pow.nano.to";
+var REPRESENTATIVE = "nano_38713x95zyjsqzx6nm1dsom1jmm668owkeb9913ax6nfgj15az3nu8xkx579";
+function rpc_call(_x) {
+  return _rpc_call.apply(this, arguments);
 }
-function _confirmation_handler() {
-  _confirmation_handler = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee5(message) {
-    var _message$block, _message$block2;
-    var send_amount, from_account, account, fcm_tokens_v2, shorthand_account, notification_title, notification_body;
+function _rpc_call() {
+  _rpc_call = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee5(data) {
+    var res;
     return _regeneratorRuntime().wrap(function _callee5$(_context5) {
       while (1) {
         switch (_context5.prev = _context5.next) {
           case 0:
+            _context5.next = 2;
+            return _axios["default"].post(HTTP_URL, data);
+          case 2:
+            res = _context5.sent;
+            return _context5.abrupt("return", res.data);
+          case 4:
+          case "end":
+            return _context5.stop();
+        }
+      }
+    }, _callee5);
+  }));
+  return _rpc_call.apply(this, arguments);
+}
+function get_work(_x2) {
+  return _get_work.apply(this, arguments);
+}
+function _get_work() {
+  _get_work = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee6(hash) {
+    var _res$data;
+    var res;
+    return _regeneratorRuntime().wrap(function _callee6$(_context6) {
+      while (1) {
+        switch (_context6.prev = _context6.next) {
+          case 0:
+            _context6.next = 2;
+            return _axios["default"].post(WORK_URL, {
+              hash: hash
+            }, {
+              headers: {
+                'Accept-Encoding': 'application/json'
+              }
+            });
+          case 2:
+            res = _context6.sent;
+            return _context6.abrupt("return", (_res$data = res.data) === null || _res$data === void 0 ? void 0 : _res$data.work);
+          case 4:
+          case "end":
+            return _context6.stop();
+        }
+      }
+    }, _callee6);
+  }));
+  return _get_work.apply(this, arguments);
+}
+function confirmation_handler(_x3) {
+  return _confirmation_handler.apply(this, arguments);
+}
+function _confirmation_handler() {
+  _confirmation_handler = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee7(message) {
+    var _message$block, _message$block2;
+    var send_amount, from_account, account, fcm_tokens_v2, shorthand_account, notification_title, notification_body;
+    return _regeneratorRuntime().wrap(function _callee7$(_context7) {
+      while (1) {
+        switch (_context7.prev = _context7.next) {
+          case 0:
             send_amount = BigInt(message === null || message === void 0 ? void 0 : message.amount);
             from_account = message === null || message === void 0 ? void 0 : (_message$block = message.block) === null || _message$block === void 0 ? void 0 : _message$block.account;
             account = message === null || message === void 0 ? void 0 : (_message$block2 = message.block) === null || _message$block2 === void 0 ? void 0 : _message$block2.link_as_account;
-            _context5.next = 5;
+            _context7.next = 5;
             return get_fcm_tokens(account);
           case 5:
-            fcm_tokens_v2 = _context5.sent;
+            fcm_tokens_v2 = _context7.sent;
             if (!(fcm_tokens_v2 == null || fcm_tokens_v2.length == 0)) {
-              _context5.next = 8;
+              _context7.next = 8;
               break;
             }
-            return _context5.abrupt("return");
+            return _context7.abrupt("return");
           case 8:
-            _context5.next = 10;
+            _context7.next = 10;
             return get_shorthand_account(from_account);
           case 10:
-            shorthand_account = _context5.sent;
+            shorthand_account = _context7.sent;
             // if int(send_amount) >= int(min_raw_receive):
             notification_title = "Received ".concat(raw_to_nano(send_amount), " NANO from ").concat(shorthand_account);
             notification_body = "Open Nautilus to view this transaction.";
-            _context5.next = 15;
+            _context7.next = 15;
             return send_notification(fcm_tokens_v2, {
               "title": notification_title,
               "body": notification_body
@@ -116,14 +180,14 @@ function _confirmation_handler() {
               // "tag": account
             }, {
               "click_action": "FLUTTER_NOTIFICATION_CLICK",
-              "account": account
+              "account": "".concat(account)
             });
           case 15:
           case "end":
-            return _context5.stop();
+            return _context7.stop();
         }
       }
-    }, _callee5);
+    }, _callee7);
   }));
   return _confirmation_handler.apply(this, arguments);
 }
@@ -142,33 +206,33 @@ new_websocket(WS_URL, function (socket) {
   var message = data.message;
   confirmation_handler(message);
 });
-function get_shorthand_account(_x2) {
+function get_shorthand_account(_x4) {
   return _get_shorthand_account.apply(this, arguments);
 }
 function _get_shorthand_account() {
-  _get_shorthand_account = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee6(account) {
+  _get_shorthand_account = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee8(account) {
     var shorthand_account;
-    return _regeneratorRuntime().wrap(function _callee6$(_context6) {
+    return _regeneratorRuntime().wrap(function _callee8$(_context8) {
       while (1) {
-        switch (_context6.prev = _context6.next) {
+        switch (_context8.prev = _context8.next) {
           case 0:
-            _context6.next = 2;
+            _context8.next = 2;
             return redisClient.hGet("usernames", "".concat(account));
           case 2:
-            shorthand_account = _context6.sent;
+            shorthand_account = _context8.sent;
             if (!shorthand_account) {
               // set username to abbreviated account name:
               shorthand_account = account.substring(0, 12);
             } else {
               shorthand_account = "@" + shorthand_account;
             }
-            return _context6.abrupt("return", shorthand_account);
+            return _context8.abrupt("return", shorthand_account);
           case 5:
           case "end":
-            return _context6.stop();
+            return _context8.stop();
         }
       }
-    }, _callee6);
+    }, _callee8);
   }));
   return _get_shorthand_account.apply(this, arguments);
 }
@@ -189,15 +253,15 @@ function new_websocket(url, ready_callback, message_callback) {
   };
   return socket;
 }
-function send_notification(_x3, _x4, _x5) {
+function send_notification(_x5, _x6, _x7) {
   return _send_notification.apply(this, arguments);
 } // add rest route for /api
 function _send_notification() {
-  _send_notification = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee7(fcm_tokens_v2, notification, data) {
+  _send_notification = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee9(fcm_tokens_v2, notification, data) {
     var _iterator3, _step3, t2, message;
-    return _regeneratorRuntime().wrap(function _callee7$(_context7) {
+    return _regeneratorRuntime().wrap(function _callee9$(_context9) {
       while (1) {
-        switch (_context7.prev = _context7.next) {
+        switch (_context9.prev = _context9.next) {
           case 0:
             // let fcm_tokens_v2 = await get_fcm_tokens(account);
             // if (fcm_tokens_v2 == null || fcm_tokens_v2.length == 0) {
@@ -207,11 +271,11 @@ function _send_notification() {
             //     };
             // }
             _iterator3 = _createForOfIteratorHelper(fcm_tokens_v2);
-            _context7.prev = 1;
+            _context9.prev = 1;
             _iterator3.s();
           case 3:
             if ((_step3 = _iterator3.n()).done) {
-              _context7.next = 10;
+              _context9.next = 10;
               break;
             }
             t2 = _step3.value;
@@ -220,32 +284,32 @@ function _send_notification() {
               notification: notification,
               data: data
             };
-            _context7.next = 8;
+            _context9.next = 8;
             return messaging.send(message).then(function (response) {
               console.log('Successfully sent message:', response);
             })["catch"](function (error) {
               console.error('Error sending message:', error);
             });
           case 8:
-            _context7.next = 3;
+            _context9.next = 3;
             break;
           case 10:
-            _context7.next = 15;
+            _context9.next = 15;
             break;
           case 12:
-            _context7.prev = 12;
-            _context7.t0 = _context7["catch"](1);
-            _iterator3.e(_context7.t0);
+            _context9.prev = 12;
+            _context9.t0 = _context9["catch"](1);
+            _iterator3.e(_context9.t0);
           case 15:
-            _context7.prev = 15;
+            _context9.prev = 15;
             _iterator3.f();
-            return _context7.finish(15);
+            return _context9.finish(15);
           case 18:
           case "end":
-            return _context7.stop();
+            return _context9.stop();
         }
       }
-    }, _callee7, null, [[1, 12, 15, 18]]);
+    }, _callee9, null, [[1, 12, 15, 18]]);
   }));
   return _send_notification.apply(this, arguments);
 }
@@ -253,6 +317,12 @@ app.get("/api", function (req, res) {
   // return json response
   res.json({
     message: "Hello World"
+  });
+});
+app.get("/health", function (req, res) {
+  // return OK
+  res.json({
+    message: "OK"
   });
 });
 app.get("/alerts/:lang", function (req, res) {
@@ -278,34 +348,34 @@ var ACTIVE_ALERTS = [{
     "long_description": "The Nano network is experiencing issues.\n\nSome transactions may be significantly delayed, up to several days. We will keep our users updated with new information as the Nano team provides it.\n\nYou can read more by tapping \"Read More\" below.\n\nAll issues in regards to transaction delays are due to the Nano network issues, not Nautilus. We are not associated with the Nano Foundation or its developers.\n\nWe appreciate your patience during this time."
   },
   "sv": {
-    "title": "Nätverksproblem",
-    "short_description": "På grund av pågående problem med Nano-nätverket, finns det många fördröjda transaktioner.",
-    "long_description": "Nano-nätverket upplever problem som beror på en långvarig och pågående period med spamtransaktioner.\n\nNågra transaktioner kan dröja avsevärt, upp till flera dagar. Vi kommer att hålla våra användare uppdaterade med ny information så snart Nano-teamet förmedlar den.\n\nDu kan läsa mer genom att trycka på \"Läs Mer\" nedan.\n\nAlla problem som rör fördröjda transaktioner är på grund av nätverksproblem hos Nano. Vi är inte associerade med Nano Foundation eller dess utvecklare och kan därför inte påskynda långsamma transaktioner.\n\nVi uppskattar ditt tålamod under denna period."
+    "title": "NÃ¤tverksproblem",
+    "short_description": "PÃ¥ grund av pÃ¥gÃ¥ende problem med Nano-nÃ¤tverket, finns det mÃ¥nga fÃ¶rdrÃ¶jda transaktioner.",
+    "long_description": "Nano-nÃ¤tverket upplever problem som beror pÃ¥ en lÃ¥ngvarig och pÃ¥gÃ¥ende period med spamtransaktioner.\n\nNÃ¥gra transaktioner kan drÃ¶ja avsevÃ¤rt, upp till flera dagar. Vi kommer att hÃ¥lla vÃ¥ra anvÃ¤ndare uppdaterade med ny information sÃ¥ snart Nano-teamet fÃ¶rmedlar den.\n\nDu kan lÃ¤sa mer genom att trycka pÃ¥ \"LÃ¤s Mer\" nedan.\n\nAlla problem som rÃ¶r fÃ¶rdrÃ¶jda transaktioner Ã¤r pÃ¥ grund av nÃ¤tverksproblem hos Nano. Vi Ã¤r inte associerade med Nano Foundation eller dess utvecklare och kan dÃ¤rfÃ¶r inte pÃ¥skynda lÃ¥ngsamma transaktioner.\n\nVi uppskattar ditt tÃ¥lamod under denna period."
   },
   "es": {
     "title": "Problemas de red",
     "short_description": "Debido a problemas continuos con la red Nano, muchas transacciones se retrasan.",
-    "long_description": "La red Nano está experimentando problemas causados ​​por un período prolongado y continuo de transacciones de spam.\n\nAlgunas transacciones pueden retrasarse significativamente, hasta varios días. Mantendremos a nuestros usuarios actualizados con nueva información a medida que el equipo de Nano la proporcione.\n\nPuede leer más apretando \"Leer Más\" abajo\n\nTodos los problemas relacionados con las demoras en las transacciones se deben a problemas de la red Nano, no Natrium. No estamos asociados con la Nano Foundation o sus desarrolladores y no podemos hacer nada para acelerar las transacciones lentas.\n\nAgradecemos su paciencia durante este tiempo."
+    "long_description": "La red Nano estÃ¡ experimentando problemas causados â€‹â€‹por un perÃ­odo prolongado y continuo de transacciones de spam.\n\nAlgunas transacciones pueden retrasarse significativamente, hasta varios dÃ­as. Mantendremos a nuestros usuarios actualizados con nueva informaciÃ³n a medida que el equipo de Nano la proporcione.\n\nPuede leer mÃ¡s apretando \"Leer MÃ¡s\" abajo\n\nTodos los problemas relacionados con las demoras en las transacciones se deben a problemas de la red Nano, no Natrium. No estamos asociados con la Nano Foundation o sus desarrolladores y no podemos hacer nada para acelerar las transacciones lentas.\n\nAgradecemos su paciencia durante este tiempo."
   },
   "tr": {
-    "title": "Ağ Problemleri",
-    "short_description": "Nano ağında devam eden spam problemi nedeniyle bir çok işlem gecikmekte.",
-    "long_description": "Nano ağı bir süredir devam eden spam nedeniyle problem yaşıyor.\n\nBazı işlemleriniz bir kaç gün süren gecikmelere maruz kalabilir. Nano takımının vereceği güncel haberleri size ileteceğiz.\n\nAşağıdaki \"Detaylı Bilgi\" butonuna dokunarak daha detaylı bilgi alabilirsiniz.\n\nİşlem gecikmeleriyle alakalı bu problemler Natrium'dan değil, Nano ağının kendisinden kaynaklı. Nano Foundation veya geliştiricileriyle bir bağımız olmadığı için işlemlerinizi hızlandırabilmek için şu noktada yapabileceğimiz bir şey ne yazık ki yok.\n\nAnlayışınız ve sabrınız için teşekkür ederiz."
+    "title": "AÄŸ Problemleri",
+    "short_description": "Nano aÄŸÄ±nda devam eden spam problemi nedeniyle bir Ã§ok iÅŸlem gecikmekte.",
+    "long_description": "Nano aÄŸÄ± bir sÃ¼redir devam eden spam nedeniyle problem yaÅŸÄ±yor.\n\nBazÄ± iÅŸlemleriniz bir kaÃ§ gÃ¼n sÃ¼ren gecikmelere maruz kalabilir. Nano takÄ±mÄ±nÄ±n vereceÄŸi gÃ¼ncel haberleri size ileteceÄŸiz.\n\nAÅŸaÄŸÄ±daki \"DetaylÄ± Bilgi\" butonuna dokunarak daha detaylÄ± bilgi alabilirsiniz.\n\nÄ°ÅŸlem gecikmeleriyle alakalÄ± bu problemler Natrium'dan deÄŸil, Nano aÄŸÄ±nÄ±n kendisinden kaynaklÄ±. Nano Foundation veya geliÅŸtiricileriyle bir baÄŸÄ±mÄ±z olmadÄ±ÄŸÄ± iÃ§in iÅŸlemlerinizi hÄ±zlandÄ±rabilmek iÃ§in ÅŸu noktada yapabileceÄŸimiz bir ÅŸey ne yazÄ±k ki yok.\n\nAnlayÄ±ÅŸÄ±nÄ±z ve sabrÄ±nÄ±z iÃ§in teÅŸekkÃ¼r ederiz."
   },
   "ja": {
-    "title": "ネットワークエラー",
-    "short_description": "Nanoネットワークの継続的な問題により、多くの取引が遅延しています。",
-    "long_description": "Nanoネットワークでは、スパムの取引が長期間継続することによって問題が発生しています。\n\n一部の取引は最大数日遅れる場合があります。Nanoチームが提供する新しい情報で、皆さんを最新の状態に保ちます。\n\n 詳しくは\"詳しくは\"ボタンをクリックして下さい。\n\n取引の遅延に関するすべての問題は、Natriumではなく、Nanoネットワークの問題が原因です。NatriumはNano Foundationやその開発者とは関係がなく、遅い取引をスピードアップするために何もすることはできません。\n\nご理解お願いいたします。"
+    "title": "ãƒãƒƒãƒˆãƒ¯ãƒ¼ã‚¯ã‚¨ãƒ©ãƒ¼",
+    "short_description": "Nanoãƒãƒƒãƒˆãƒ¯ãƒ¼ã‚¯ã®ç¶™ç¶šçš„ãªå•é¡Œã«ã‚ˆã‚Šã€å¤šãã®å–å¼•ãŒé…å»¶ã—ã¦ã„ã¾ã™ã€‚",
+    "long_description": "Nanoãƒãƒƒãƒˆãƒ¯ãƒ¼ã‚¯ã§ã¯ã€ã‚¹ãƒ‘ãƒ ã®å–å¼•ãŒé•·æœŸé–“ç¶™ç¶šã™ã‚‹ã“ã¨ã«ã‚ˆã£ã¦å•é¡ŒãŒç™ºç”Ÿã—ã¦ã„ã¾ã™ã€‚\n\nä¸€éƒ¨ã®å–å¼•ã¯æœ€å¤§æ•°æ—¥é…ã‚Œã‚‹å ´åˆãŒã‚ã‚Šã¾ã™ã€‚Nanoãƒãƒ¼ãƒ ãŒæä¾›ã™ã‚‹æ–°ã—ã„æƒ…å ±ã§ã€çš†ã•ã‚“ã‚’æœ€æ–°ã®çŠ¶æ…‹ã«ä¿ã¡ã¾ã™ã€‚\n\n è©³ã—ãã¯\"è©³ã—ãã¯\"ãƒœã‚¿ãƒ³ã‚’ã‚¯ãƒªãƒƒã‚¯ã—ã¦ä¸‹ã•ã„ã€‚\n\nå–å¼•ã®é…å»¶ã«é–¢ã™ã‚‹ã™ã¹ã¦ã®å•é¡Œã¯ã€Natriumã§ã¯ãªãã€Nanoãƒãƒƒãƒˆãƒ¯ãƒ¼ã‚¯ã®å•é¡ŒãŒåŽŸå› ã§ã™ã€‚Natriumã¯Nano Foundationã‚„ãã®é–‹ç™ºè€…ã¨ã¯é–¢ä¿‚ãŒãªãã€é…ã„å–å¼•ã‚’ã‚¹ãƒ”ãƒ¼ãƒ‰ã‚¢ãƒƒãƒ—ã™ã‚‹ãŸã‚ã«ä½•ã‚‚ã™ã‚‹ã“ã¨ã¯ã§ãã¾ã›ã‚“ã€‚\n\nã”ç†è§£ãŠé¡˜ã„ã„ãŸã—ã¾ã™ã€‚"
   },
   "de": {
     "title": "Netzwerkprobleme",
-    "short_description": "Aufgrund von anhaltenden Problemen mit dem Nano-Netzwerk sind aktuell viele Transaktionen verzögert.",
-    "long_description": "Das Nano-Netzwerk kämpft derzeit mit Problemen, die durch eine lang andauernde Serie von Spam-Transaktionen verursacht wurden.\n\nManche Transaktionen können daher stark verzögert sein, teilweise um bis zu mehrere Tage. Wir werden unsere Nutzer über wichtige Neuigkeiten informieren, sobald das Nano-Team diese veröffentlicht.\n\nErfahre mehr, indem du auf \"Mehr Infos\" klickst.\n\nDie Probleme mit verzögerten Transaktionen sind verursacht durch das Nano-Netzwerk, nicht durch Natrium. Wir stehen in keinem Zusammenhang mit der Nano Foundation oder ihren Entwicklern und können daher nichts tun, um die Transaktionen zu beschleunigen.\n\nVielen Dank für dein Verständnis."
+    "short_description": "Aufgrund von anhaltenden Problemen mit dem Nano-Netzwerk sind aktuell viele Transaktionen verzÃ¶gert.",
+    "long_description": "Das Nano-Netzwerk kÃ¤mpft derzeit mit Problemen, die durch eine lang andauernde Serie von Spam-Transaktionen verursacht wurden.\n\nManche Transaktionen kÃ¶nnen daher stark verzÃ¶gert sein, teilweise um bis zu mehrere Tage. Wir werden unsere Nutzer Ã¼ber wichtige Neuigkeiten informieren, sobald das Nano-Team diese verÃ¶ffentlicht.\n\nErfahre mehr, indem du auf \"Mehr Infos\" klickst.\n\nDie Probleme mit verzÃ¶gerten Transaktionen sind verursacht durch das Nano-Netzwerk, nicht durch Natrium. Wir stehen in keinem Zusammenhang mit der Nano Foundation oder ihren Entwicklern und kÃ¶nnen daher nichts tun, um die Transaktionen zu beschleunigen.\n\nVielen Dank fÃ¼r dein VerstÃ¤ndnis."
   },
   "fr": {
-    "title": "Problèmes de réseau",
-    "short_description": "En raison des problèmes en cours avec le réseau Nano, de nombreuses transactions sont retardées.",
-    "long_description": "Le réseau Nano connaît des problèmes causés par une période prolongée et continue de transactions de spam.\n\nCertaines transactions peuvent être considérablement retardées, jusqu'à plusieurs jours. Nous tiendrons nos utilisateurs à jour avec de nouvelles informations au fur et à mesure que l'équipe Nano les fournira.\n\nVous pouvez en savoir plus en appuyant sur \"Lire la suite\" ci-dessous.\n\nTous les problèmes liés aux retards de transaction sont dus aux problèmes de réseau Nano, et non à Natrium. Nous ne sommes pas associés à la Fondation Nano ou à ses développeurs et ne pouvons rien faire pour accélérer les transactions lentes.\n\nNous apprécions votre patience pendant cette période."
+    "title": "ProblÃ¨mes de rÃ©seau",
+    "short_description": "En raison des problÃ¨mes en cours avec le rÃ©seau Nano, de nombreuses transactions sont retardÃ©es.",
+    "long_description": "Le rÃ©seau Nano connaÃ®t des problÃ¨mes causÃ©s par une pÃ©riode prolongÃ©e et continue de transactions de spam.\n\nCertaines transactions peuvent Ãªtre considÃ©rablement retardÃ©es, jusqu'Ã  plusieurs jours. Nous tiendrons nos utilisateurs Ã  jour avec de nouvelles informations au fur et Ã  mesure que l'Ã©quipe Nano les fournira.\n\nVous pouvez en savoir plus en appuyant sur \"Lire la suite\" ci-dessous.\n\nTous les problÃ¨mes liÃ©s aux retards de transaction sont dus aux problÃ¨mes de rÃ©seau Nano, et non Ã  Natrium. Nous ne sommes pas associÃ©s Ã  la Fondation Nano ou Ã  ses dÃ©veloppeurs et ne pouvons rien faire pour accÃ©lÃ©rer les transactions lentes.\n\nNous apprÃ©cions votre patience pendant cette pÃ©riode."
   },
   "nl": {
     "title": "Netwerkproblemen",
@@ -318,14 +388,14 @@ var ACTIVE_ALERTS = [{
     "long_description": "Jaringan Nano mengalami masalah yang disebabkan oleh periode transaksi spam yang berkepanjangan dan berkelanjutan.\n\nBeberapa transaksi mungkin tertunda secara signifikan, hingga beberapa hari. Kami akan terus memperbarui informasi baru kepada pengguna kami saat tim Nano menyediakannya.\n\nAnda dapat membaca selengkapnya dengan mengetuk \"Baca Selengkapnya\" di bawah.\n\nSemua masalah terkait penundaan transaksi disebabkan oleh masalah jaringan Nano, bukan Natrium. Kami tidak terkait dengan Nano Foundation atau pengembangnya dan tidak dapat melakukan apa pun untuk mempercepat transaksi yang lambat.\n\nKami menghargai kesabaran anda selama ini."
   },
   "ru": {
-    "title": "Проблемы с сетью",
-    "short_description": "Из-за текущих проблем с сетью Nano многие транзакции задерживаются.",
-    "long_description": "В сети Nano возникают проблемы, вызванные продолжительным периодом спам-транзакций.\n\nНекоторые транзакции могут быть значительно задержаны, до нескольких дней. Мы будем держать наших пользователей в курсе новой информации, поскольку команда Nano  предоставляет его.\n\nВы можете узнать больше, нажав \"Подробнее\" ниже.\n\nВсе проблемы, связанные с задержками транзакций, вызваны проблемами сети Nano, а не Natrium. Мы не связаны с Nano Foundation его разработчики не могут ничего сделать для ускорения медленных  транзакций.\n\nМы благодарим вас за терпение в это время."
+    "title": "ÐŸÑ€Ð¾Ð±Ð»ÐµÐ¼Ñ‹ Ñ ÑÐµÑ‚ÑŒÑŽ",
+    "short_description": "Ð˜Ð·-Ð·Ð° Ñ‚ÐµÐºÑƒÑ‰Ð¸Ñ… Ð¿Ñ€Ð¾Ð±Ð»ÐµÐ¼ Ñ ÑÐµÑ‚ÑŒÑŽ Nano Ð¼Ð½Ð¾Ð³Ð¸Ðµ Ñ‚Ñ€Ð°Ð½Ð·Ð°ÐºÑ†Ð¸Ð¸ Ð·Ð°Ð´ÐµÑ€Ð¶Ð¸Ð²Ð°ÑŽÑ‚ÑÑ.",
+    "long_description": "Ð’ ÑÐµÑ‚Ð¸ Nano Ð²Ð¾Ð·Ð½Ð¸ÐºÐ°ÑŽÑ‚ Ð¿Ñ€Ð¾Ð±Ð»ÐµÐ¼Ñ‹, Ð²Ñ‹Ð·Ð²Ð°Ð½Ð½Ñ‹Ðµ Ð¿Ñ€Ð¾Ð´Ð¾Ð»Ð¶Ð¸Ñ‚ÐµÐ»ÑŒÐ½Ñ‹Ð¼ Ð¿ÐµÑ€Ð¸Ð¾Ð´Ð¾Ð¼ ÑÐ¿Ð°Ð¼-Ñ‚Ñ€Ð°Ð½Ð·Ð°ÐºÑ†Ð¸Ð¹.\n\nÐÐµÐºÐ¾Ñ‚Ð¾Ñ€Ñ‹Ðµ Ñ‚Ñ€Ð°Ð½Ð·Ð°ÐºÑ†Ð¸Ð¸ Ð¼Ð¾Ð³ÑƒÑ‚ Ð±Ñ‹Ñ‚ÑŒ Ð·Ð½Ð°Ñ‡Ð¸Ñ‚ÐµÐ»ÑŒÐ½Ð¾ Ð·Ð°Ð´ÐµÑ€Ð¶Ð°Ð½Ñ‹, Ð´Ð¾ Ð½ÐµÑÐºÐ¾Ð»ÑŒÐºÐ¸Ñ… Ð´Ð½ÐµÐ¹. ÐœÑ‹ Ð±ÑƒÐ´ÐµÐ¼ Ð´ÐµÑ€Ð¶Ð°Ñ‚ÑŒ Ð½Ð°ÑˆÐ¸Ñ… Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»ÐµÐ¹ Ð² ÐºÑƒÑ€ÑÐµ Ð½Ð¾Ð²Ð¾Ð¹ Ð¸Ð½Ñ„Ð¾Ñ€Ð¼Ð°Ñ†Ð¸Ð¸, Ð¿Ð¾ÑÐºÐ¾Ð»ÑŒÐºÑƒ ÐºÐ¾Ð¼Ð°Ð½Ð´Ð° Nano  Ð¿Ñ€ÐµÐ´Ð¾ÑÑ‚Ð°Ð²Ð»ÑÐµÑ‚ ÐµÐ³Ð¾.\n\nÐ’Ñ‹ Ð¼Ð¾Ð¶ÐµÑ‚Ðµ ÑƒÐ·Ð½Ð°Ñ‚ÑŒ Ð±Ð¾Ð»ÑŒÑˆÐµ, Ð½Ð°Ð¶Ð°Ð² \"ÐŸÐ¾Ð´Ñ€Ð¾Ð±Ð½ÐµÐµ\" Ð½Ð¸Ð¶Ðµ.\n\nÐ’ÑÐµ Ð¿Ñ€Ð¾Ð±Ð»ÐµÐ¼Ñ‹, ÑÐ²ÑÐ·Ð°Ð½Ð½Ñ‹Ðµ Ñ Ð·Ð°Ð´ÐµÑ€Ð¶ÐºÐ°Ð¼Ð¸ Ñ‚Ñ€Ð°Ð½Ð·Ð°ÐºÑ†Ð¸Ð¹, Ð²Ñ‹Ð·Ð²Ð°Ð½Ñ‹ Ð¿Ñ€Ð¾Ð±Ð»ÐµÐ¼Ð°Ð¼Ð¸ ÑÐµÑ‚Ð¸ Nano, Ð° Ð½Ðµ Natrium. ÐœÑ‹ Ð½Ðµ ÑÐ²ÑÐ·Ð°Ð½Ñ‹ Ñ Nano Foundation ÐµÐ³Ð¾ Ñ€Ð°Ð·Ñ€Ð°Ð±Ð¾Ñ‚Ñ‡Ð¸ÐºÐ¸ Ð½Ðµ Ð¼Ð¾Ð³ÑƒÑ‚ Ð½Ð¸Ñ‡ÐµÐ³Ð¾ ÑÐ´ÐµÐ»Ð°Ñ‚ÑŒ Ð´Ð»Ñ ÑƒÑÐºÐ¾Ñ€ÐµÐ½Ð¸Ñ Ð¼ÐµÐ´Ð»ÐµÐ½Ð½Ñ‹Ñ…  Ñ‚Ñ€Ð°Ð½Ð·Ð°ÐºÑ†Ð¸Ð¹.\n\nÐœÑ‹ Ð±Ð»Ð°Ð³Ð¾Ð´Ð°Ñ€Ð¸Ð¼ Ð²Ð°Ñ Ð·Ð° Ñ‚ÐµÑ€Ð¿ÐµÐ½Ð¸Ðµ Ð² ÑÑ‚Ð¾ Ð²Ñ€ÐµÐ¼Ñ."
   },
   "da": {
-    "title": "Netværksproblemer",
-    "short_description": "På grund af igangværende problemer med Nano-netværket er der mange forsinkede transaktioner.",
-    "long_description": "Nano-netværket oplever problemer på grund af en lang og løbende periode med spamtransaktioner.\n\nNogle transaktioner kan tage lang tid, op til flere dage. Vi holder vores brugere opdateret med nye oplysninger, så snart Nano-teamet giver dem.\n\nDu kan læse mere ved at klikke \"Læs mere\" nedenfor.\n\nAlle problemer med hensyn til transaktionsforsinkelser skyldes problemer med Nano-netværket, ikke Natrium. Vi er ikke tilknyttet Nano Foundation eller dets udviklere og kan ikke gøre noget for at fremskynde langsomme transaktioner.\n\nVi sætter pris på din tålmodighed i denne periode."
+    "title": "NetvÃ¦rksproblemer",
+    "short_description": "PÃ¥ grund af igangvÃ¦rende problemer med Nano-netvÃ¦rket er der mange forsinkede transaktioner.",
+    "long_description": "Nano-netvÃ¦rket oplever problemer pÃ¥ grund af en lang og lÃ¸bende periode med spamtransaktioner.\n\nNogle transaktioner kan tage lang tid, op til flere dage. Vi holder vores brugere opdateret med nye oplysninger, sÃ¥ snart Nano-teamet giver dem.\n\nDu kan lÃ¦se mere ved at klikke \"LÃ¦s mere\" nedenfor.\n\nAlle problemer med hensyn til transaktionsforsinkelser skyldes problemer med Nano-netvÃ¦rket, ikke Natrium. Vi er ikke tilknyttet Nano Foundation eller dets udviklere og kan ikke gÃ¸re noget for at fremskynde langsomme transaktioner.\n\nVi sÃ¦tter pris pÃ¥ din tÃ¥lmodighed i denne periode."
   }
 }, {
   "id": 2,
@@ -606,15 +676,15 @@ function get_active_funding(lang) {
 }
 
 // payments API:
-function validate_signature(_x6, _x7, _x8) {
+function validate_signature(_x8, _x9, _x10) {
   return _validate_signature.apply(this, arguments);
 }
 function _validate_signature() {
-  _validate_signature = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee8(requesting_account, request_signature, request_nonce) {
+  _validate_signature = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee10(requesting_account, request_signature, request_nonce) {
     var ret;
-    return _regeneratorRuntime().wrap(function _callee8$(_context8) {
+    return _regeneratorRuntime().wrap(function _callee10$(_context10) {
       while (1) {
-        switch (_context8.prev = _context8.next) {
+        switch (_context10.prev = _context10.next) {
           case 0:
             // TODO:
             ret = null; // check if the nonce is valid
@@ -643,13 +713,13 @@ function _validate_signature() {
             //         'details': 'invalid signature'
             //     })
             // }
-            return _context8.abrupt("return", ret);
+            return _context10.abrupt("return", ret);
           case 2:
           case "end":
-            return _context8.stop();
+            return _context10.stop();
         }
       }
-    }, _callee8);
+    }, _callee10);
   }));
   return _validate_signature.apply(this, arguments);
 }
@@ -671,87 +741,87 @@ function check_local_uuid(local_uuid) {
   // return new_uuid
   return (0, _uuid.v4)();
 }
-function push_payment_request(_x9, _x10, _x11, _x12, _x13) {
+function push_payment_request(_x11, _x12, _x13, _x14, _x15) {
   return _push_payment_request.apply(this, arguments);
 }
 function _push_payment_request() {
-  _push_payment_request = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee9(account, amount_raw, requesting_account, memo_enc, local_uuid) {
+  _push_payment_request = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee11(account, amount_raw, requesting_account, memo_enc, local_uuid) {
     var fcm_tokens_v2, shorthand_account, request_uuid, request_time, notification_title, notification_body;
-    return _regeneratorRuntime().wrap(function _callee9$(_context9) {
+    return _regeneratorRuntime().wrap(function _callee11$(_context11) {
       while (1) {
-        switch (_context9.prev = _context9.next) {
+        switch (_context11.prev = _context11.next) {
           case 0:
             if (!(fcm_api_key == null)) {
-              _context9.next = 2;
+              _context11.next = 2;
               break;
             }
-            return _context9.abrupt("return", {
+            return _context11.abrupt("return", {
               'error': 'fcm token error',
               'details': "no_api_key"
             });
           case 2:
-            _context9.next = 4;
+            _context11.next = 4;
             return get_fcm_tokens(account);
           case 4:
-            fcm_tokens_v2 = _context9.sent;
+            fcm_tokens_v2 = _context11.sent;
             if (!(fcm_tokens_v2 == null || fcm_tokens_v2.length == 0)) {
-              _context9.next = 7;
+              _context11.next = 7;
               break;
             }
-            return _context9.abrupt("return", {
+            return _context11.abrupt("return", {
               'error': 'fcm token error',
               'details': "no_tokens"
             });
           case 7:
-            _context9.next = 9;
+            _context11.next = 9;
             return get_shorthand_account(requesting_account);
           case 9:
-            shorthand_account = _context9.sent;
-            _context9.next = 12;
+            shorthand_account = _context11.sent;
+            _context11.next = 12;
             return check_local_uuid(local_uuid);
           case 12:
-            request_uuid = _context9.sent;
+            request_uuid = _context11.sent;
             request_time = parseInt(Date.now() / 1000); // Send notification with generic title, send amount as body. App should have localizations and use this information at its discretion
             notification_title = "Request for ".concat(raw_to_nano(amount_raw), " NANO from ").concat(shorthand_account);
             notification_body = "Open Nautilus to pay this request.";
-            _context9.next = 18;
+            _context11.next = 18;
             return send_notification(fcm_tokens_v2, {
               "title": notification_title,
               "body": notification_body
             }, {
               "click_action": "FLUTTER_NOTIFICATION_CLICK",
-              "account": account,
+              "account": "".concat(account),
               "payment_request": "true",
-              "uuid": request_uuid,
-              "local_uuid": local_uuid,
+              "uuid": "".concat(request_uuid),
+              "local_uuid": "".concat(local_uuid),
               "memo_enc": "".concat(memo_enc),
               "amount_raw": "".concat(amount_raw),
-              "requesting_account": requesting_account,
-              "requesting_account_shorthand": shorthand_account,
+              "requesting_account": "".concat(requesting_account),
+              "requesting_account_shorthand": "".concat(shorthand_account),
               "request_time": "".concat(request_time)
             });
           case 18:
-            _context9.next = 20;
+            _context11.next = 20;
             return get_fcm_tokens(requesting_account);
           case 20:
-            fcm_tokens_v2 = _context9.sent;
+            fcm_tokens_v2 = _context11.sent;
             if (!(fcm_tokens_v2 == null || fcm_tokens_v2.length == 0)) {
-              _context9.next = 23;
+              _context11.next = 23;
               break;
             }
-            return _context9.abrupt("return", {
+            return _context11.abrupt("return", {
               'error': 'fcm token error',
               'details': "no_tokens"
             });
           case 23:
-            _context9.next = 25;
+            _context11.next = 25;
             return send_notification(fcm_tokens_v2, {}, {
-              "account": account,
+              "account": "".concat(account),
               "payment_record": "true",
               "is_request": "true",
               "memo_enc": "".concat(memo_enc),
-              "uuid": request_uuid,
-              "local_uuid": local_uuid,
+              "uuid": "".concat(request_uuid),
+              "local_uuid": "".concat(local_uuid),
               "amount_raw": "".concat(amount_raw),
               "requesting_account": requesting_account,
               "requesting_account_shorthand": shorthand_account,
@@ -759,232 +829,19 @@ function _push_payment_request() {
             });
           case 25:
           case "end":
-            return _context9.stop();
-        }
-      }
-    }, _callee9);
-  }));
-  return _push_payment_request.apply(this, arguments);
-}
-function push_payment_ack(_x14, _x15, _x16) {
-  return _push_payment_ack.apply(this, arguments);
-}
-function _push_payment_ack() {
-  _push_payment_ack = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee10(request_uuid, account, requesting_account) {
-    var fcm_tokens_v2, _iterator4, _step4, token, message;
-    return _regeneratorRuntime().wrap(function _callee10$(_context10) {
-      while (1) {
-        switch (_context10.prev = _context10.next) {
-          case 0:
-            _context10.next = 2;
-            return get_fcm_tokens(account);
-          case 2:
-            fcm_tokens_v2 = _context10.sent;
-            if (!(fcm_tokens_v2 == null || fcm_tokens_v2.length == 0)) {
-              _context10.next = 5;
-              break;
-            }
-            return _context10.abrupt("return", {
-              'error': 'fcm token error',
-              'details': "no_tokens"
-            });
-          case 5:
-            // # Send notification
-            _iterator4 = _createForOfIteratorHelper(fcm_tokens_v2);
-            _context10.prev = 6;
-            _iterator4.s();
-          case 8:
-            if ((_step4 = _iterator4.n()).done) {
-              _context10.next = 16;
-              break;
-            }
-            token = _step4.value;
-            message = {
-              token: token,
-              data: {
-                "account": account,
-                "payment_ack": "true",
-                "uuid": request_uuid,
-                "requesting_account": requesting_account
-              }
-            };
-            _context10.next = 13;
-            return messaging.send(message).then(function (response) {
-              console.log('Successfully sent message:', response);
-            })["catch"](function (error) {
-              console.error('Error sending message:', error);
-            });
-          case 13:
-            return _context10.abrupt("return", null);
-          case 14:
-            _context10.next = 8;
-            break;
-          case 16:
-            _context10.next = 21;
-            break;
-          case 18:
-            _context10.prev = 18;
-            _context10.t0 = _context10["catch"](6);
-            _iterator4.e(_context10.t0);
-          case 21:
-            _context10.prev = 21;
-            _iterator4.f();
-            return _context10.finish(21);
-          case 24:
-          case "end":
-            return _context10.stop();
-        }
-      }
-    }, _callee10, null, [[6, 18, 21, 24]]);
-  }));
-  return _push_payment_ack.apply(this, arguments);
-}
-function push_payment_memo(_x17, _x18, _x19, _x20, _x21) {
-  return _push_payment_memo.apply(this, arguments);
-}
-function _push_payment_memo() {
-  _push_payment_memo = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee11(account, requesting_account, memo_enc, block, local_uuid) {
-    var fcm_tokens_v2, request_uuid, request_time, _iterator5, _step5, token, message, _iterator6, _step6, _token, _message;
-    return _regeneratorRuntime().wrap(function _callee11$(_context11) {
-      while (1) {
-        switch (_context11.prev = _context11.next) {
-          case 0:
-            _context11.next = 2;
-            return get_fcm_tokens(account);
-          case 2:
-            fcm_tokens_v2 = _context11.sent;
-            if (!(fcm_tokens_v2 == null || fcm_tokens_v2.length == 0)) {
-              _context11.next = 5;
-              break;
-            }
-            return _context11.abrupt("return", {
-              'error': 'fcm token error',
-              'details': "no_tokens"
-            });
-          case 5:
-            _context11.next = 7;
-            return check_local_uuid(local_uuid);
-          case 7:
-            request_uuid = _context11.sent;
-            request_time = parseInt(Date.now() / 1000); // # send memo to the recipient
-            _iterator5 = _createForOfIteratorHelper(fcm_tokens_v2);
-            _context11.prev = 10;
-            _iterator5.s();
-          case 12:
-            if ((_step5 = _iterator5.n()).done) {
-              _context11.next = 19;
-              break;
-            }
-            token = _step5.value;
-            message = {
-              token: token,
-              data: {
-                // # "click_action": "FLUTTER_NOTIFICATION_CLICK",
-                "account": account,
-                "requesting_account": requesting_account,
-                "payment_memo": True,
-                "memo_enc": str(memo_enc),
-                "block": str(block),
-                "uuid": request_uuid,
-                "local_uuid": local_uuid,
-                "request_time": request_time
-              }
-            };
-            _context11.next = 17;
-            return messaging.send(message).then(function (response) {
-              console.log('Successfully sent message:', response);
-            })["catch"](function (error) {
-              console.error('Error sending message:', error);
-            });
-          case 17:
-            _context11.next = 12;
-            break;
-          case 19:
-            _context11.next = 24;
-            break;
-          case 21:
-            _context11.prev = 21;
-            _context11.t0 = _context11["catch"](10);
-            _iterator5.e(_context11.t0);
-          case 24:
-            _context11.prev = 24;
-            _iterator5.f();
-            return _context11.finish(24);
-          case 27:
-            _context11.next = 29;
-            return get_fcm_tokens(requesting_account);
-          case 29:
-            fcm_tokens_v2 = _context11.sent;
-            if (!(fcm_tokens_v2 == null || fcm_tokens_v2.length == 0)) {
-              _context11.next = 32;
-              break;
-            }
-            return _context11.abrupt("return", "no_tokens");
-          case 32:
-            _iterator6 = _createForOfIteratorHelper(fcm_tokens_v2);
-            _context11.prev = 33;
-            _iterator6.s();
-          case 35:
-            if ((_step6 = _iterator6.n()).done) {
-              _context11.next = 42;
-              break;
-            }
-            _token = _step6.value;
-            _message = {
-              token: _token,
-              data: {
-                // # "click_action": "FLUTTER_NOTIFICATION_CLICK",
-                "account": account,
-                "requesting_account": requesting_account,
-                "payment_record": "true",
-                "is_memo": "true",
-                "memo_enc": "".concat(memo_enc),
-                "uuid": request_uuid,
-                "local_uuid": local_uuid,
-                "block": "".concat(block),
-                // # "amount_raw": str(send_amount),
-                // # "requesting_account": requesting_account,
-                // # "requesting_account_shorthand": shorthand_account,
-                "request_time": "".concat(request_time)
-              }
-            };
-            _context11.next = 40;
-            return messaging.send(_message).then(function (response) {
-              console.log('Successfully sent message:', response);
-            })["catch"](function (error) {
-              console.error('Error sending message:', error);
-            });
-          case 40:
-            _context11.next = 35;
-            break;
-          case 42:
-            _context11.next = 47;
-            break;
-          case 44:
-            _context11.prev = 44;
-            _context11.t1 = _context11["catch"](33);
-            _iterator6.e(_context11.t1);
-          case 47:
-            _context11.prev = 47;
-            _iterator6.f();
-            return _context11.finish(47);
-          case 50:
-            return _context11.abrupt("return", null);
-          case 51:
-          case "end":
             return _context11.stop();
         }
       }
-    }, _callee11, null, [[10, 21, 24, 27], [33, 44, 47, 50]]);
+    }, _callee11);
   }));
-  return _push_payment_memo.apply(this, arguments);
+  return _push_payment_request.apply(this, arguments);
 }
-function push_payment_message(_x22, _x23, _x24, _x25) {
-  return _push_payment_message.apply(this, arguments);
+function push_payment_ack(_x16, _x17, _x18) {
+  return _push_payment_ack.apply(this, arguments);
 }
-function _push_payment_message() {
-  _push_payment_message = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee12(account, requesting_account, memo_enc, local_uuid) {
-    var fcm_tokens_v2, request_uuid, request_time, shorthand_account, notification_title, notification_body, _iterator7, _step7, token, message, _iterator8, _step8, _token2, _message2;
+function _push_payment_ack() {
+  _push_payment_ack = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee12(request_uuid, account, requesting_account) {
+    var fcm_tokens_v2, _iterator4, _step4, token, message;
     return _regeneratorRuntime().wrap(function _callee12$(_context12) {
       while (1) {
         switch (_context12.prev = _context12.next) {
@@ -1002,27 +859,178 @@ function _push_payment_message() {
               'details': "no_tokens"
             });
           case 5:
-            _context12.next = 7;
+            // # Send notification
+            _iterator4 = _createForOfIteratorHelper(fcm_tokens_v2);
+            _context12.prev = 6;
+            _iterator4.s();
+          case 8:
+            if ((_step4 = _iterator4.n()).done) {
+              _context12.next = 16;
+              break;
+            }
+            token = _step4.value;
+            message = {
+              token: token,
+              data: {
+                "account": account,
+                "payment_ack": "true",
+                "uuid": request_uuid,
+                "requesting_account": requesting_account
+              }
+            };
+            _context12.next = 13;
+            return messaging.send(message).then(function (response) {
+              console.log('Successfully sent message:', response);
+            })["catch"](function (error) {
+              console.error('Error sending message:', error);
+            });
+          case 13:
+            return _context12.abrupt("return", null);
+          case 14:
+            _context12.next = 8;
+            break;
+          case 16:
+            _context12.next = 21;
+            break;
+          case 18:
+            _context12.prev = 18;
+            _context12.t0 = _context12["catch"](6);
+            _iterator4.e(_context12.t0);
+          case 21:
+            _context12.prev = 21;
+            _iterator4.f();
+            return _context12.finish(21);
+          case 24:
+          case "end":
+            return _context12.stop();
+        }
+      }
+    }, _callee12, null, [[6, 18, 21, 24]]);
+  }));
+  return _push_payment_ack.apply(this, arguments);
+}
+function push_payment_memo(_x19, _x20, _x21, _x22, _x23) {
+  return _push_payment_memo.apply(this, arguments);
+}
+function _push_payment_memo() {
+  _push_payment_memo = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee13(account, requesting_account, memo_enc, block, local_uuid) {
+    var fcm_tokens_v2, request_uuid, request_time;
+    return _regeneratorRuntime().wrap(function _callee13$(_context13) {
+      while (1) {
+        switch (_context13.prev = _context13.next) {
+          case 0:
+            _context13.next = 2;
+            return get_fcm_tokens(account);
+          case 2:
+            fcm_tokens_v2 = _context13.sent;
+            if (!(fcm_tokens_v2 == null || fcm_tokens_v2.length == 0)) {
+              _context13.next = 5;
+              break;
+            }
+            return _context13.abrupt("return", {
+              'error': 'fcm token error',
+              'details': "no_tokens"
+            });
+          case 5:
+            _context13.next = 7;
             return check_local_uuid(local_uuid);
           case 7:
-            request_uuid = _context12.sent;
+            request_uuid = _context13.sent;
+            request_time = parseInt(Date.now() / 1000); // # send memo to the recipient
+            _context13.next = 11;
+            return send_notification(fcm_tokens_v2, {}, {
+              // # "click_action": "FLUTTER_NOTIFICATION_CLICK",
+              "account": account,
+              "requesting_account": requesting_account,
+              "payment_memo": "true",
+              "memo_enc": "".concat(memo_enc),
+              "block": "".concat(block),
+              "uuid": request_uuid,
+              "local_uuid": local_uuid,
+              "request_time": "".concat(request_time)
+            });
+          case 11:
+            _context13.next = 13;
+            return get_fcm_tokens(requesting_account);
+          case 13:
+            fcm_tokens_v2 = _context13.sent;
+            if (!(fcm_tokens_v2 == null || fcm_tokens_v2.length == 0)) {
+              _context13.next = 16;
+              break;
+            }
+            return _context13.abrupt("return", "no_tokens");
+          case 16:
+            _context13.next = 18;
+            return send_notification(fcm_tokens_v2, {}, {
+              // # "click_action": "FLUTTER_NOTIFICATION_CLICK",
+              "account": "".concat(account),
+              "requesting_account": "".concat(requesting_account),
+              "payment_record": "true",
+              "is_memo": "true",
+              "memo_enc": "".concat(memo_enc),
+              "uuid": "".concat(request_uuid),
+              "local_uuid": "".concat(local_uuid),
+              "block": "".concat(block),
+              // # "amount_raw": str(send_amount),
+              // # "requesting_account": requesting_account,
+              // # "requesting_account_shorthand": shorthand_account,
+              "request_time": "".concat(request_time)
+            });
+          case 18:
+            return _context13.abrupt("return", null);
+          case 19:
+          case "end":
+            return _context13.stop();
+        }
+      }
+    }, _callee13);
+  }));
+  return _push_payment_memo.apply(this, arguments);
+}
+function push_payment_message(_x24, _x25, _x26, _x27) {
+  return _push_payment_message.apply(this, arguments);
+}
+function _push_payment_message() {
+  _push_payment_message = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee14(account, requesting_account, memo_enc, local_uuid) {
+    var fcm_tokens_v2, request_uuid, request_time, shorthand_account, notification_title, notification_body, _iterator5, _step5, token, message, _iterator6, _step6, _token, _message;
+    return _regeneratorRuntime().wrap(function _callee14$(_context14) {
+      while (1) {
+        switch (_context14.prev = _context14.next) {
+          case 0:
+            _context14.next = 2;
+            return get_fcm_tokens(account);
+          case 2:
+            fcm_tokens_v2 = _context14.sent;
+            if (!(fcm_tokens_v2 == null || fcm_tokens_v2.length == 0)) {
+              _context14.next = 5;
+              break;
+            }
+            return _context14.abrupt("return", {
+              'error': 'fcm token error',
+              'details': "no_tokens"
+            });
+          case 5:
+            _context14.next = 7;
+            return check_local_uuid(local_uuid);
+          case 7:
+            request_uuid = _context14.sent;
             request_time = parseInt(Date.now() / 1000); // get username if it exists:
-            _context12.next = 11;
+            _context14.next = 11;
             return get_shorthand_account(requesting_account);
           case 11:
-            shorthand_account = _context12.sent;
+            shorthand_account = _context14.sent;
             // Send notification with generic title, send amount as body. App should have localizations and use this information at its discretion
             notification_title = "Message from ".concat(shorthand_account);
             notification_body = "Open Nautilus to view.";
-            _iterator7 = _createForOfIteratorHelper(fcm_tokens_v2);
-            _context12.prev = 15;
-            _iterator7.s();
+            _iterator5 = _createForOfIteratorHelper(fcm_tokens_v2);
+            _context14.prev = 15;
+            _iterator5.s();
           case 17:
-            if ((_step7 = _iterator7.n()).done) {
-              _context12.next = 24;
+            if ((_step5 = _iterator5.n()).done) {
+              _context14.next = 24;
               break;
             }
-            token = _step7.value;
+            token = _step5.value;
             message = {
               token: token,
               notification: {
@@ -1034,58 +1042,58 @@ function _push_payment_message() {
 
               data: {
                 "click_action": "FLUTTER_NOTIFICATION_CLICK",
-                "account": account,
-                "payment_message": True,
-                "uuid": request_uuid,
-                "local_uuid": local_uuid,
-                "memo_enc": str(memo_enc),
-                "requesting_account": requesting_account,
-                "requesting_account_shorthand": shorthand_account,
-                "request_time": request_time
+                "account": "".concat(account),
+                "payment_message": "true",
+                "uuid": "".concat(request_uuid),
+                "local_uuid": "".concat(local_uuid),
+                "memo_enc": "".concat(memo_enc),
+                "requesting_account": "".concat(requesting_account),
+                "requesting_account_shorthand": "".concat(shorthand_account),
+                "request_time": "".concat(request_time)
               }
             };
-            _context12.next = 22;
+            _context14.next = 22;
             return messaging.send(message).then(function (response) {
               console.log('Successfully sent message:', response);
             })["catch"](function (error) {
               console.error('Error sending message:', error);
             });
           case 22:
-            _context12.next = 17;
+            _context14.next = 17;
             break;
           case 24:
-            _context12.next = 29;
+            _context14.next = 29;
             break;
           case 26:
-            _context12.prev = 26;
-            _context12.t0 = _context12["catch"](15);
-            _iterator7.e(_context12.t0);
+            _context14.prev = 26;
+            _context14.t0 = _context14["catch"](15);
+            _iterator5.e(_context14.t0);
           case 29:
-            _context12.prev = 29;
-            _iterator7.f();
-            return _context12.finish(29);
+            _context14.prev = 29;
+            _iterator5.f();
+            return _context14.finish(29);
           case 32:
-            _context12.next = 34;
+            _context14.next = 34;
             return get_fcm_tokens(requesting_account);
           case 34:
-            fcm_tokens_v2 = _context12.sent;
+            fcm_tokens_v2 = _context14.sent;
             if (!(fcm_tokens_v2 == null || fcm_tokens_v2.length == 0)) {
-              _context12.next = 37;
+              _context14.next = 37;
               break;
             }
-            return _context12.abrupt("return", "no_tokens");
+            return _context14.abrupt("return", "no_tokens");
           case 37:
-            _iterator8 = _createForOfIteratorHelper(fcm_tokens_v2);
-            _context12.prev = 38;
-            _iterator8.s();
+            _iterator6 = _createForOfIteratorHelper(fcm_tokens_v2);
+            _context14.prev = 38;
+            _iterator6.s();
           case 40:
-            if ((_step8 = _iterator8.n()).done) {
-              _context12.next = 47;
+            if ((_step6 = _iterator6.n()).done) {
+              _context14.next = 47;
               break;
             }
-            _token2 = _step8.value;
-            _message2 = {
-              token: _token2,
+            _token = _step6.value;
+            _message = {
+              token: _token,
               data: {
                 // # "click_action": "FLUTTER_NOTIFICATION_CLICK",
                 "account": account,
@@ -1099,34 +1107,34 @@ function _push_payment_message() {
                 "request_time": "".concat(request_time)
               }
             };
-            _context12.next = 45;
-            return messaging.send(_message2).then(function (response) {
+            _context14.next = 45;
+            return messaging.send(_message).then(function (response) {
               console.log('Successfully sent message:', response);
             })["catch"](function (error) {
               console.error('Error sending message:', error);
             });
           case 45:
-            _context12.next = 40;
+            _context14.next = 40;
             break;
           case 47:
-            _context12.next = 52;
+            _context14.next = 52;
             break;
           case 49:
-            _context12.prev = 49;
-            _context12.t1 = _context12["catch"](38);
-            _iterator8.e(_context12.t1);
+            _context14.prev = 49;
+            _context14.t1 = _context14["catch"](38);
+            _iterator6.e(_context14.t1);
           case 52:
-            _context12.prev = 52;
-            _iterator8.f();
-            return _context12.finish(52);
+            _context14.prev = 52;
+            _iterator6.f();
+            return _context14.finish(52);
           case 55:
-            return _context12.abrupt("return", null);
+            return _context14.abrupt("return", null);
           case 56:
           case "end":
-            return _context12.stop();
+            return _context14.stop();
         }
       }
-    }, _callee12, null, [[15, 26, 29, 32], [38, 49, 52, 55]]);
+    }, _callee14, null, [[15, 26, 29, 32], [38, 49, 52, 55]]);
   }));
   return _push_payment_message.apply(this, arguments);
 }
@@ -1242,16 +1250,15 @@ app.post("/payments", /*#__PURE__*/function () {
             };
             return _context.abrupt("break", 49);
           case 49:
-            console.log(ret);
             res.json(ret);
-          case 51:
+          case 50:
           case "end":
             return _context.stop();
         }
       }
     }, _callee);
   }));
-  return function (_x26, _x27) {
+  return function (_x28, _x29) {
     return _ref.apply(this, arguments);
   };
 }());
@@ -1265,37 +1272,36 @@ app.post("/notifications", /*#__PURE__*/function () {
             // get request json:
             request_json = req.body || {};
             ret = {};
-            console.log(req.body);
             _context2.t0 = request_json.action;
-            _context2.next = _context2.t0 === "fcm_update" ? 6 : 15;
+            _context2.next = _context2.t0 === "fcm_update" ? 5 : 14;
             break;
-          case 6:
+          case 5:
             if (!request_json.enabled) {
-              _context2.next = 12;
+              _context2.next = 11;
               break;
             }
             console.log("updating:" + request_json.account + " " + request_json.fcm_token_v2);
-            _context2.next = 10;
+            _context2.next = 9;
             return update_fcm_token_for_account(request_json.account, request_json.fcm_token_v2);
-          case 10:
-            _context2.next = 14;
+          case 9:
+            _context2.next = 13;
             break;
-          case 12:
-            _context2.next = 14;
+          case 11:
+            _context2.next = 13;
             return delete_fcm_token_for_account(request_json.account, request_json.fcm_token_v2);
+          case 13:
+            return _context2.abrupt("break", 14);
           case 14:
-            return _context2.abrupt("break", 15);
-          case 15:
             // returns nothing:
             res.json(ret);
-          case 16:
+          case 15:
           case "end":
             return _context2.stop();
         }
       }
     }, _callee2);
   }));
-  return function (_x28, _x29) {
+  return function (_x30, _x31) {
     return _ref2.apply(this, arguments);
   };
 }());
@@ -1361,46 +1367,45 @@ app.post("/price", /*#__PURE__*/function () {
       }
     }, _callee3, null, [[1, 18], [3, 10]]);
   }));
-  return function (_x30, _x31) {
+  return function (_x32, _x33) {
     return _ref3.apply(this, arguments);
   };
 }());
 
 // giftcard API:
-function generate_account_id(_x32, _x33) {
-  return _generate_account_id.apply(this, arguments);
+function generate_account_from_seed(_x34) {
+  return _generate_account_from_seed.apply(this, arguments);
 }
-function _generate_account_id() {
-  _generate_account_id = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee13(seed, index) {
-    return _regeneratorRuntime().wrap(function _callee13$(_context13) {
+function _generate_account_from_seed() {
+  _generate_account_from_seed = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee15(seed) {
+    var w;
+    return _regeneratorRuntime().wrap(function _callee15$(_context15) {
       while (1) {
-        switch (_context13.prev = _context13.next) {
+        switch (_context15.prev = _context15.next) {
           case 0:
-            return _context13.abrupt("return", "0");
-          case 1:
+            w = _nanocurrencyWeb.wallet.fromLegacySeed(seed);
+            return _context15.abrupt("return", w.accounts[0]);
+          case 2:
           case "end":
-            return _context13.stop();
+            return _context15.stop();
         }
       }
-    }, _callee13);
+    }, _callee15);
   }));
-  return _generate_account_id.apply(this, arguments);
+  return _generate_account_from_seed.apply(this, arguments);
 }
-function branch_create_link(_x34) {
+function branch_create_link(_x35) {
   return _branch_create_link.apply(this, arguments);
 }
 function _branch_create_link() {
-  _branch_create_link = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee14(_ref4) {
-    var paperWalletSeed, paperWalletAccount, memo, fromAddress, amountRaw, giftUUID, requireCaptcha, url, headers, branch_api_key, giftDescription, resp;
-    return _regeneratorRuntime().wrap(function _callee14$(_context14) {
+  _branch_create_link = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee16(_ref4) {
+    var paperWalletSeed, paperWalletAccount, memo, fromAddress, amountRaw, giftUUID, requireCaptcha, url, branch_api_key, giftDescription, data, resp;
+    return _regeneratorRuntime().wrap(function _callee16$(_context16) {
       while (1) {
-        switch (_context14.prev = _context14.next) {
+        switch (_context16.prev = _context16.next) {
           case 0:
             paperWalletSeed = _ref4.paperWalletSeed, paperWalletAccount = _ref4.paperWalletAccount, memo = _ref4.memo, fromAddress = _ref4.fromAddress, amountRaw = _ref4.amountRaw, giftUUID = _ref4.giftUUID, requireCaptcha = _ref4.requireCaptcha;
             url = "https://api2.branch.io/v1/url";
-            headers = {
-              'Content-Type': 'application/json'
-            };
             branch_api_key = process.env.BRANCH_API_KEY;
             giftDescription = "Get the app to open this gift card!";
             if (BigInt(amountRaw) > BigInt(1000000000000000000000000000000)) {
@@ -1429,137 +1434,569 @@ function _branch_create_link() {
                 "$og_title": "Nautilus Wallet",
                 "$og_description": giftDescription
               }
-            };
-
-            // resp = requests.post(url, headers=headers, data=data)
+            }; // resp = requests.post(url, headers=headers, data=data)
             // TODO: axios:
-            _context14.next = 9;
+            _context16.next = 8;
             return _axios["default"].post(url, data);
-          case 9:
-            resp = _context14.sent;
-            console.log(resp);
-            return _context14.abrupt("return", resp);
-          case 12:
-          case "end":
-            return _context14.stop();
-        }
-      }
-    }, _callee14);
-  }));
-  return _branch_create_link.apply(this, arguments);
-}
-function gift_split_create(_x35, _x36) {
-  return _gift_split_create.apply(this, arguments);
-}
-function _gift_split_create() {
-  _gift_split_create = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee15(res, _ref5) {
-    var seed, split_amount_raw, memo, requesting_account, require_captcha, giftUUID, giftData, paperWalletAccount, branchResponse, branchLink;
-    return _regeneratorRuntime().wrap(function _callee15$(_context15) {
-      while (1) {
-        switch (_context15.prev = _context15.next) {
-          case 0:
-            seed = _ref5.seed, split_amount_raw = _ref5.split_amount_raw, memo = _ref5.memo, requesting_account = _ref5.requesting_account, require_captcha = _ref5.require_captcha;
-            // TODO:
-            // let giftUUID = str(uuid.uuid4())[-12:];
-            giftUUID = "";
-            giftData = {
-              "seed": seed,
-              "split_amount_raw": splitAmountRaw,
-              "memo": memo,
-              "from_address": fromAddress,
-              "gift_uuid": giftUUID,
-              "require_captcha": requireCaptcha
-            };
-            _context15.next = 5;
-            return redisClient.hset("gift_data", giftUUID, giftData);
-          case 5:
-            if (!(BigInt(splitAmountRaw) > BigInt(1000000000000000000000000000000000))) {
-              _context15.next = 8;
-              break;
-            }
-            res.json({
-              "error": "splitAmountRaw is too large"
-            });
-            return _context15.abrupt("return");
           case 8:
-            paperWalletAccount = generate_account_id(seed, 0);
-            _context15.next = 11;
-            return branch_create_link({
-              paperWalletSeed: seed,
-              paperWalletAccount: paperWalletAccount,
-              memo: memo,
-              fromAddress: fromAddress,
-              amountRaw: splitAmountRaw,
-              giftUUID: giftUUID,
-              requireCaptcha: requireCaptcha
-            });
-          case 11:
-            branchResponse = _context15.sent;
-            if (!(branchResponse == null || branchResponse.status_code != 200)) {
-              _context15.next = 14;
-              break;
-            }
-            return _context15.abrupt("return", {
-              "error": "error creating branch link"
-            });
-          case 14:
-            branchLink = branchResponse.json().url;
-            return _context15.abrupt("return", {
-              "link": branchLink,
-              "gift_data": giftData
-            });
-          case 16:
-          case "end":
-            return _context15.stop();
-        }
-      }
-    }, _callee15);
-  }));
-  return _gift_split_create.apply(this, arguments);
-}
-function gift_claim(_x37) {
-  return _gift_claim.apply(this, arguments);
-}
-function _gift_claim() {
-  _gift_claim = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee16(_ref6) {
-    var gift_uuid, requesting_account, requesting_device_uuid;
-    return _regeneratorRuntime().wrap(function _callee16$(_context16) {
-      while (1) {
-        switch (_context16.prev = _context16.next) {
-          case 0:
-            gift_uuid = _ref6.gift_uuid, requesting_account = _ref6.requesting_account, requesting_device_uuid = _ref6.requesting_device_uuid;
-            return _context16.abrupt("return", null);
-          case 2:
+            resp = _context16.sent;
+            return _context16.abrupt("return", resp);
+          case 10:
           case "end":
             return _context16.stop();
         }
       }
     }, _callee16);
   }));
-  return _gift_claim.apply(this, arguments);
+  return _branch_create_link.apply(this, arguments);
 }
-function gift_info(_x38) {
-  return _gift_info.apply(this, arguments);
+function gift_split_create(_x36) {
+  return _gift_split_create.apply(this, arguments);
 }
-function _gift_info() {
-  _gift_info = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee17(_ref7) {
-    var gift_uuid, requesting_account, requesting_device_uuid;
+function _gift_split_create() {
+  _gift_split_create = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee17(_ref5) {
+    var _branchResponse$data, _branchResponse$data2;
+    var seed, split_amount_raw, memo, requesting_account, require_captcha, giftUUID, giftData, paperWalletAccount, branchResponse, branchLink;
     return _regeneratorRuntime().wrap(function _callee17$(_context17) {
       while (1) {
         switch (_context17.prev = _context17.next) {
           case 0:
-            gift_uuid = _ref7.gift_uuid, requesting_account = _ref7.requesting_account, requesting_device_uuid = _ref7.requesting_device_uuid;
-            return _context17.abrupt("return", null);
-          case 2:
+            seed = _ref5.seed, split_amount_raw = _ref5.split_amount_raw, memo = _ref5.memo, requesting_account = _ref5.requesting_account, require_captcha = _ref5.require_captcha;
+            giftUUID = (0, _uuid.v4)().slice(-12);
+            giftData = {
+              "seed": seed,
+              "split_amount_raw": split_amount_raw,
+              "memo": memo,
+              "from_address": requesting_account,
+              "gift_uuid": giftUUID,
+              "require_captcha": require_captcha
+            };
+            _context17.next = 5;
+            return redisClient.hSet("gift_data", giftUUID, JSON.stringify(giftData));
+          case 5:
+            if (!(BigInt(split_amount_raw) > BigInt(1000000000000000000000000000000000))) {
+              _context17.next = 7;
+              break;
+            }
+            return _context17.abrupt("return", {
+              "error": "split_amount_raw is too large"
+            });
+          case 7:
+            _context17.next = 9;
+            return generate_account_from_seed(seed);
+          case 9:
+            paperWalletAccount = _context17.sent;
+            _context17.next = 12;
+            return branch_create_link({
+              paperWalletSeed: seed,
+              paperWalletAccount: paperWalletAccount,
+              memo: memo,
+              fromAddress: requesting_account,
+              amountRaw: split_amount_raw,
+              giftUUID: giftUUID,
+              requireCaptcha: require_captcha
+            });
+          case 12:
+            branchResponse = _context17.sent;
+            if (!((branchResponse === null || branchResponse === void 0 ? void 0 : (_branchResponse$data = branchResponse.data) === null || _branchResponse$data === void 0 ? void 0 : _branchResponse$data.url) == null)) {
+              _context17.next = 15;
+              break;
+            }
+            return _context17.abrupt("return", {
+              "error": "error creating branch link"
+            });
+          case 15:
+            branchLink = (_branchResponse$data2 = branchResponse.data) === null || _branchResponse$data2 === void 0 ? void 0 : _branchResponse$data2.url;
+            return _context17.abrupt("return", {
+              success: true,
+              link: branchLink,
+              gift_data: giftData
+            });
+          case 17:
           case "end":
             return _context17.stop();
         }
       }
     }, _callee17);
   }));
+  return _gift_split_create.apply(this, arguments);
+}
+var sleep = function sleep(time) {
+  return new Promise(function (res) {
+    return setTimeout(res, time);
+  });
+};
+function gift_claim(_x37, _x38) {
+  return _gift_claim.apply(this, arguments);
+}
+function _gift_claim() {
+  _gift_claim = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee18(_ref6, headers) {
+    var gift_uuid, requesting_account, requesting_device_uuid, giftData, giftUUID, seed, fromAddress, splitAmountRaw, amountRaw, memo, requireCaptcha, requestingDeviceUUID, hcaptchaToken, sendAmountRaw, splitID, claimed, giftSeed, giftAccount, giftPrivateKey, giftPublicKey, giftWalletBalanceInt, response, account_not_opened, frontier, receivable_resp, hash, item, blockData, _signedBlock, resp, _blockData, _signedBlock2, _resp, giftFrontier, frontiers_resp, returnedFrontiers, addr, newBalanceRaw, sendBlock, signedBlock, sendResp;
+    return _regeneratorRuntime().wrap(function _callee18$(_context18) {
+      while (1) {
+        switch (_context18.prev = _context18.next) {
+          case 0:
+            gift_uuid = _ref6.gift_uuid, requesting_account = _ref6.requesting_account, requesting_device_uuid = _ref6.requesting_device_uuid;
+            _context18.next = 3;
+            return redisClient.hGet("gift_data", gift_uuid);
+          case 3:
+            giftData = _context18.sent;
+            giftData = JSON.parse(giftData);
+            giftUUID = giftData.gift_uuid;
+            seed = giftData.seed;
+            fromAddress = giftData.from_address;
+            splitAmountRaw = giftData.split_amount_raw;
+            amountRaw = giftData.amount_raw;
+            memo = giftData.memo;
+            requireCaptcha = giftData.require_captcha;
+            requestingDeviceUUID = requesting_device_uuid; // if 'app-version' in r.headers:
+            //     appVersion = r.headers.get('app-version')
+            //     appVersion = appVersion.replace(".", "")
+            //     appVersion = int(appVersion)
+            //     if appVersion < 60:
+            //         return json.dumps({"error": "App version is too old!"})
+            // else:
+            //     return json.dumps({"error": "App version is too old!"})
+            if (!requireCaptcha) {
+              _context18.next = 22;
+              break;
+            }
+            // TODO:
+
+            console.log(headers);
+            if (!headers["hcaptcha-token"]) {
+              _context18.next = 21;
+              break;
+            }
+            hcaptchaToken = headers["hcaptcha-token"]; // // post to hcaptcha to verify the token:
+            // let resp = await axios.post("https://hcaptcha.com/siteverify", qs.stringify({
+            //     "response": hcaptchaToken,
+            //     "secret": HCAPTCHA_SECRET_KEY,
+            // }), {
+            //     headers: {
+            //         'Accept-Encoding': 'application/json',
+            //         'Content-Type': 'application/x-www-form-urlencoded'
+            //     },
+            // });
+            // console.log(resp.data);
+            // TODO:
+            if (!(hcaptchaToken.length < 30)) {
+              _context18.next = 19;
+              break;
+            }
+            return _context18.abrupt("return", {
+              "error": "hcaptcha-token invalid!"
+            });
+          case 19:
+            _context18.next = 22;
+            break;
+          case 21:
+            return _context18.abrupt("return", {
+              "error": "no hcaptcha-token!"
+            });
+          case 22:
+            sendAmountRaw = null;
+            if (!!splitAmountRaw) {
+              sendAmountRaw = splitAmountRaw;
+            } else if (!!amountRaw) {
+              sendAmountRaw = amountRaw;
+            }
+            if (sendAmountRaw) {
+              _context18.next = 26;
+              break;
+            }
+            return _context18.abrupt("return", {
+              "error": "sendAmountRaw is None"
+            });
+          case 26:
+            if (giftUUID) {
+              _context18.next = 28;
+              break;
+            }
+            return _context18.abrupt("return", {
+              "error": "gift not found!"
+            });
+          case 28:
+            if (!(!requestingDeviceUUID || requestingDeviceUUID == "")) {
+              _context18.next = 30;
+              break;
+            }
+            return _context18.abrupt("return", {
+              "error": "requestingDeviceUUID is None"
+            });
+          case 30:
+            // check if it was claimed by this user:
+            // splitID = util.get_request_ip(r) + nonce_separator + giftUUID + nonce_separator + requestingAccount
+            splitID = requestingDeviceUUID + nonce_separator + giftUUID; // splitID = util.get_request_ip(r) + nonce_separator + giftUUID
+            _context18.next = 33;
+            return redisClient.hGet("gift_claims", splitID);
+          case 33:
+            claimed = _context18.sent;
+            if (!(!!claimed && !testing)) {
+              _context18.next = 36;
+              break;
+            }
+            return _context18.abrupt("return", {
+              "error": "gift has already been claimed"
+            });
+          case 36:
+            giftSeed = seed;
+            _context18.next = 39;
+            return generate_account_from_seed(giftSeed);
+          case 39:
+            giftAccount = _context18.sent.address;
+            _context18.next = 42;
+            return generate_account_from_seed(giftSeed);
+          case 42:
+            giftPrivateKey = _context18.sent.privateKey;
+            _context18.next = 45;
+            return generate_account_from_seed(giftSeed);
+          case 45:
+            giftPublicKey = _context18.sent.publicKey;
+            // receive any receivable funds from the paper wallet first:
+            giftWalletBalanceInt = null; // get account_info:
+            _context18.next = 49;
+            return rpc_call({
+              "action": "account_info",
+              "account": giftAccount
+            });
+          case 49:
+            response = _context18.sent;
+            account_not_opened = false;
+            if (!(response.error == "Account not found")) {
+              _context18.next = 55;
+              break;
+            }
+            account_not_opened = true;
+            _context18.next = 60;
+            break;
+          case 55:
+            if (!response.error) {
+              _context18.next = 59;
+              break;
+            }
+            return _context18.abrupt("return", {
+              "error": response.error
+            });
+          case 59:
+            giftWalletBalanceInt = response.balance;
+          case 60:
+            frontier = null;
+            if (!account_not_opened) {
+              frontier = response.frontier;
+            }
+
+            // get the receivable blocks:
+            _context18.next = 64;
+            return rpc_call({
+              "action": "receivable",
+              "source": true,
+              "count": 10,
+              "include_active": true,
+              "account": giftAccount
+            });
+          case 64:
+            receivable_resp = _context18.sent;
+            if (receivable_resp.blocks == "") {
+              receivable_resp.blocks = {};
+            }
+
+            // receive each block:
+            _context18.t0 = _regeneratorRuntime().keys(receivable_resp.blocks);
+          case 67:
+            if ((_context18.t1 = _context18.t0()).done) {
+              _context18.next = 104;
+              break;
+            }
+            hash = _context18.t1.value;
+            item = receivable_resp.blocks[hash]; // we have a frontier, i.e. the account is already opened:
+            if (!frontier) {
+              _context18.next = 89;
+              break;
+            }
+            giftWalletBalanceInt = item.amount;
+            _context18.t2 = frontier;
+            _context18.t3 = giftAccount;
+            _context18.t4 = REPRESENTATIVE;
+            _context18.t5 = giftWalletBalanceInt;
+            _context18.t6 = item.amount;
+            _context18.t7 = hash;
+            _context18.next = 80;
+            return get_work(hash);
+          case 80:
+            _context18.t8 = _context18.sent;
+            blockData = {
+              frontier: _context18.t2,
+              toAddress: _context18.t3,
+              representativeAddress: _context18.t4,
+              walletBalanceRaw: _context18.t5,
+              amountRaw: _context18.t6,
+              transactionHash: _context18.t7,
+              work: _context18.t8
+            };
+            _signedBlock = _nanocurrencyWeb.block.receive(blockData, giftPrivateKey);
+            _context18.next = 85;
+            return rpc_call({
+              action: "process",
+              json_block: true,
+              subtype: "receive",
+              block: _signedBlock
+            });
+          case 85:
+            resp = _context18.sent;
+            if (!!resp.hash) {
+              frontier = resp.hash;
+            }
+            _context18.next = 102;
+            break;
+          case 89:
+            _context18.t9 = giftAccount;
+            _context18.t10 = REPRESENTATIVE;
+            _context18.t11 = item.amount;
+            _context18.t12 = hash;
+            _context18.next = 95;
+            return get_work(giftPublicKey);
+          case 95:
+            _context18.t13 = _context18.sent;
+            _blockData = {
+              frontier: "0000000000000000000000000000000000000000000000000000000000000000",
+              toAddress: _context18.t9,
+              representativeAddress: _context18.t10,
+              walletBalanceRaw: "0",
+              amountRaw: _context18.t11,
+              transactionHash: _context18.t12,
+              work: _context18.t13
+            };
+            _signedBlock2 = _nanocurrencyWeb.block.receive(_blockData, giftPrivateKey);
+            _context18.next = 100;
+            return rpc_call({
+              action: "process",
+              json_block: true,
+              subtype: "receive",
+              block: _signedBlock2
+            });
+          case 100:
+            _resp = _context18.sent;
+            if (!!_resp.hash) {
+              frontier = _resp.hash;
+            }
+          case 102:
+            _context18.next = 67;
+            break;
+          case 104:
+            _context18.next = 106;
+            return sleep(4000);
+          case 106:
+            // # get the gift frontier:
+            giftFrontier = frontier;
+            _context18.next = 109;
+            return rpc_call({
+              "action": "frontiers",
+              "count": 1,
+              "account": giftAccount
+            });
+          case 109:
+            frontiers_resp = _context18.sent;
+            if (!(frontiers_resp.frontiers == "")) {
+              _context18.next = 114;
+              break;
+            }
+            giftFrontier = frontier;
+            _context18.next = 122;
+            break;
+          case 114:
+            returnedFrontiers = frontiers_resp.frontiers;
+            _context18.t14 = _regeneratorRuntime().keys(returnedFrontiers);
+          case 116:
+            if ((_context18.t15 = _context18.t14()).done) {
+              _context18.next = 122;
+              break;
+            }
+            addr = _context18.t15.value;
+            giftFrontier = returnedFrontiers[addr];
+            return _context18.abrupt("break", 122);
+          case 122:
+            // get account_info(again) so we can be 100 % sure of the balance:
+            giftWalletBalanceInt = null;
+            console.log(giftAccount);
+            _context18.next = 126;
+            return rpc_call({
+              "action": "account_info",
+              "account": giftAccount
+            });
+          case 126:
+            response = _context18.sent;
+            if (!response.error) {
+              _context18.next = 131;
+              break;
+            }
+            return _context18.abrupt("return", {
+              "error": response.error
+            });
+          case 131:
+            giftWalletBalanceInt = BigInt(response.balance);
+          case 132:
+            if (giftWalletBalanceInt) {
+              _context18.next = 136;
+              break;
+            }
+            return _context18.abrupt("return", {
+              "error": "giftWalletBalanceInt shouldn't be None"
+            });
+          case 136:
+            if (!(giftWalletBalanceInt == BigInt(0))) {
+              _context18.next = 138;
+              break;
+            }
+            return _context18.abrupt("return", {
+              "error": "Gift wallet is empty!"
+            });
+          case 138:
+            newBalanceRaw = BigInt(giftWalletBalanceInt) - BigInt(sendAmountRaw);
+            if (!(newBalanceRaw == null)) {
+              _context18.next = 143;
+              break;
+            }
+            return _context18.abrupt("return", {
+              "error": "newBalanceRaw is None"
+            });
+          case 143:
+            if (BigInt(newBalanceRaw) < BigInt(0)) {
+              // send whatever is left in the gift wallet:
+              newBalanceRaw = "0";
+            }
+          case 144:
+            _context18.t16 = giftWalletBalanceInt.toString();
+            _context18.t17 = giftAccount;
+            _context18.t18 = requesting_account;
+            _context18.t19 = REPRESENTATIVE;
+            _context18.t20 = giftFrontier;
+            _context18.t21 = sendAmountRaw;
+            _context18.next = 152;
+            return get_work(giftFrontier);
+          case 152:
+            _context18.t22 = _context18.sent;
+            sendBlock = {
+              walletBalanceRaw: _context18.t16,
+              fromAddress: _context18.t17,
+              toAddress: _context18.t18,
+              representativeAddress: _context18.t19,
+              frontier: _context18.t20,
+              amountRaw: _context18.t21,
+              work: _context18.t22
+            };
+            signedBlock = _nanocurrencyWeb.block.send(sendBlock, giftPrivateKey);
+            _context18.next = 157;
+            return rpc_call({
+              action: "process",
+              json_block: true,
+              subtype: "send",
+              block: signedBlock
+            });
+          case 157:
+            sendResp = _context18.sent;
+            if (sendResp.hash) {
+              _context18.next = 160;
+              break;
+            }
+            return _context18.abrupt("return", {
+              "error": "error sending to paper wallet: " + sendResp
+            });
+          case 160:
+            _context18.next = 162;
+            return redisClient.hSet("gift_claims", splitID, "claimed");
+          case 162:
+            return _context18.abrupt("return", {
+              "success": true
+            });
+          case 163:
+          case "end":
+            return _context18.stop();
+        }
+      }
+    }, _callee18);
+  }));
+  return _gift_claim.apply(this, arguments);
+}
+function gift_info(_x39) {
   return _gift_info.apply(this, arguments);
 }
-app.get("/gift", /*#__PURE__*/function () {
+function _gift_info() {
+  _gift_info = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee19(_ref7) {
+    var gift_uuid, requesting_account, requesting_device_uuid, giftData, splitID, claimed, amount, returnable;
+    return _regeneratorRuntime().wrap(function _callee19$(_context19) {
+      while (1) {
+        switch (_context19.prev = _context19.next) {
+          case 0:
+            gift_uuid = _ref7.gift_uuid, requesting_account = _ref7.requesting_account, requesting_device_uuid = _ref7.requesting_device_uuid;
+            _context19.next = 3;
+            return redisClient.hGet("gift_data", gift_uuid);
+          case 3:
+            giftData = _context19.sent;
+            if (giftData) {
+              _context19.next = 6;
+              break;
+            }
+            return _context19.abrupt("return", {
+              "error": "gift does not exist"
+            });
+          case 6:
+            giftData = JSON.parse(giftData);
+            if (!(!requesting_device_uuid || requesting_device_uuid == "")) {
+              _context19.next = 9;
+              break;
+            }
+            return _context19.abrupt("return", {
+              "error": "requesting_device_uuid is None"
+            });
+          case 9:
+            // # check if it was claimed by this user:
+            // # splitID = util.get_request_ip(r) + nonce_separator + giftUUID + nonce_separator + requestingAccount
+            // # splitID = util.get_request_ip(r) + nonce_separator + giftUUID
+            splitID = requesting_device_uuid + nonce_separator + gift_uuid;
+            _context19.next = 12;
+            return redisClient.hGet("gift_claims", splitID);
+          case 12:
+            claimed = _context19.sent;
+            if (!(!!claimed && !testing)) {
+              _context19.next = 15;
+              break;
+            }
+            return _context19.abrupt("return", {
+              "error": "gift has already been claimed"
+            });
+          case 15:
+            // check the balance of the gift wallet:
+            // let giftWalletSeed = giftData.seed;
+            // let giftWalletAccount = (await generate_account_from_seed(giftWalletSeed)).address;
+            // TODO: finish getting gift balance:
+            // giftWalletBalance = await rpc.json_post({"action": "account_balance", "account": giftWalletAccount})
+            amount = giftData.split_amount_raw;
+            if (!amount) {
+              amount = giftData.get("amount_raw");
+            }
+            returnable = {
+              "gift_uuid": gift_uuid,
+              "amount_raw": amount,
+              "memo": giftData.memo,
+              "from_address": giftData.from_address,
+              require_captcha: giftData.require_captcha
+            }; // if giftWalletBalance.get("balance") != None:
+            //     returnable["gift_wallet_balance"] = giftWalletBalance.get("balance")
+            return _context19.abrupt("return", {
+              "success": true,
+              "gift_data": returnable
+            });
+          case 19:
+          case "end":
+            return _context19.stop();
+        }
+      }
+    }, _callee19);
+  }));
+  return _gift_info.apply(this, arguments);
+}
+app.post("/gift", /*#__PURE__*/function () {
   var _ref8 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee4(req, res) {
     var request_json, ret;
     return _regeneratorRuntime().wrap(function _callee4$(_context4) {
@@ -1568,95 +2005,86 @@ app.get("/gift", /*#__PURE__*/function () {
           case 0:
             // get request json:
             request_json = req.body || {};
-            _context4.t0 = request_json["action"];
-            _context4.next = _context4.t0 === "gift_split_create" ? 4 : _context4.t0 === "gift_info" ? 11 : _context4.t0 === "gift_claim" ? 15 : 19;
+            _context4.t0 = request_json.action;
+            _context4.next = _context4.t0 === "gift_split_create" ? 4 : _context4.t0 === "gift_info" ? 8 : _context4.t0 === "gift_claim" ? 12 : 16;
             break;
           case 4:
             _context4.next = 6;
             return gift_split_create(request_json);
           case 6:
             ret = _context4.sent;
-            if (!(ret != null)) {
-              _context4.next = 9;
-              break;
-            }
-            return _context4.abrupt("break", 21);
-          case 9:
-            ret = {
-              "success": true,
-              "link": ret["link"],
-              "gift_data": ret["gift_data"]
-            };
-            return _context4.abrupt("break", 21);
-          case 11:
-            _context4.next = 13;
+            return _context4.abrupt("break", 18);
+          case 8:
+            _context4.next = 10;
             return gift_info(request_json);
-          case 13:
+          case 10:
             ret = _context4.sent;
-            return _context4.abrupt("break", 21);
-          case 15:
-            _context4.next = 17;
-            return gift_claim(request_json);
-          case 17:
+            return _context4.abrupt("break", 18);
+          case 12:
+            _context4.next = 14;
+            return gift_claim(request_json, req.headers);
+          case 14:
             ret = _context4.sent;
-            return _context4.abrupt("break", 21);
-          case 19:
+            return _context4.abrupt("break", 18);
+          case 16:
             ret = {
               "error": "invalid action"
             };
-            return _context4.abrupt("break", 21);
-          case 21:
+            return _context4.abrupt("break", 18);
+          case 18:
+            console.log("RES:");
+            console.log(ret);
             res.json(ret);
-          case 22:
+          case 21:
           case "end":
             return _context4.stop();
         }
       }
     }, _callee4);
   }));
-  return function (_x39, _x40) {
+  return function (_x40, _x41) {
     return _ref8.apply(this, arguments);
   };
 }());
 
 // Push notifications
-function delete_fcm_token_for_account(_x41) {
+function delete_fcm_token_for_account(_x42) {
   return _delete_fcm_token_for_account.apply(this, arguments);
 }
 function _delete_fcm_token_for_account() {
-  _delete_fcm_token_for_account = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee18(token) {
-    return _regeneratorRuntime().wrap(function _callee18$(_context18) {
+  _delete_fcm_token_for_account = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee20(token) {
+    return _regeneratorRuntime().wrap(function _callee20$(_context20) {
       while (1) {
-        switch (_context18.prev = _context18.next) {
+        switch (_context20.prev = _context20.next) {
           case 0:
-            _context18.next = 2;
+            _context20.next = 2;
             return redisClient.del(token);
           case 2:
           case "end":
-            return _context18.stop();
+            return _context20.stop();
         }
       }
-    }, _callee18);
+    }, _callee20);
   }));
   return _delete_fcm_token_for_account.apply(this, arguments);
 }
-function update_fcm_token_for_account(_x42, _x43) {
+function update_fcm_token_for_account(_x43, _x44) {
   return _update_fcm_token_for_account.apply(this, arguments);
 }
 function _update_fcm_token_for_account() {
-  _update_fcm_token_for_account = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee19(account, token) {
+  _update_fcm_token_for_account = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee21(account, token) {
     var cur_list;
-    return _regeneratorRuntime().wrap(function _callee19$(_context19) {
+    return _regeneratorRuntime().wrap(function _callee21$(_context21) {
       while (1) {
-        switch (_context19.prev = _context19.next) {
+        switch (_context21.prev = _context21.next) {
           case 0:
-            _context19.next = 2;
+            _context21.next = 2;
             return set_or_upgrade_token_account_list(account, token);
           case 2:
-            _context19.next = 4;
+            _context21.next = 4;
             return redisClient.get(account);
           case 4:
-            cur_list = _context19.sent;
+            cur_list = _context21.sent;
             if (cur_list != null) {
               // cur_list = json.loads(cur_list.replace('\'', '"'))
               // CHECK:
@@ -1667,205 +2095,205 @@ function _update_fcm_token_for_account() {
             if (!("data" in cur_list)) {
               cur_list['data'] = [];
             }
-            if (!(token in cur_list['data'])) {
+            if (!cur_list['data'].includes(token)) {
               cur_list['data'].push(token);
             }
-            _context19.next = 10;
+            _context21.next = 10;
             return redisClient.set(account, JSON.stringify(cur_list));
           case 10:
-          case "end":
-            return _context19.stop();
-        }
-      }
-    }, _callee19);
-  }));
-  return _update_fcm_token_for_account.apply(this, arguments);
-}
-function get_or_upgrade_token_account_list(_x44, _x45) {
-  return _get_or_upgrade_token_account_list.apply(this, arguments);
-}
-function _get_or_upgrade_token_account_list() {
-  _get_or_upgrade_token_account_list = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee20(account, token) {
-    var curTokenList, curToken, _curToken;
-    return _regeneratorRuntime().wrap(function _callee20$(_context20) {
-      while (1) {
-        switch (_context20.prev = _context20.next) {
-          case 0:
-            _context20.next = 2;
-            return redisClient.get(token);
-          case 2:
-            curTokenList = _context20.sent;
-            if (!curTokenList) {
-              _context20.next = 7;
-              break;
-            }
-            return _context20.abrupt("return", []);
-          case 7:
-            _context20.prev = 7;
-            curToken = JSON.parse(curTokenList);
-            return _context20.abrupt("return", curToken);
-          case 12:
-            _context20.prev = 12;
-            _context20.t0 = _context20["catch"](7);
-            _curToken = curTokenList; // CHECK (expire):
-            _context20.next = 17;
-            return redisClient.set(token, JSON.stringify([_curToken]), "EX", MONTH_IN_SECONDS);
-          case 17:
-            if (!(account != _curToken)) {
-              _context20.next = 19;
-              break;
-            }
-            return _context20.abrupt("return", []);
-          case 19:
-            _context20.t1 = JSON;
-            _context20.next = 22;
-            return redisClient.get(token);
-          case 22:
-            _context20.t2 = _context20.sent;
-            return _context20.abrupt("return", _context20.t1.parse.call(_context20.t1, _context20.t2));
-          case 24:
-          case "end":
-            return _context20.stop();
-        }
-      }
-    }, _callee20, null, [[7, 12]]);
-  }));
-  return _get_or_upgrade_token_account_list.apply(this, arguments);
-}
-function set_or_upgrade_token_account_list(_x46, _x47) {
-  return _set_or_upgrade_token_account_list.apply(this, arguments);
-}
-function _set_or_upgrade_token_account_list() {
-  _set_or_upgrade_token_account_list = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee21(account, token) {
-    var curTokenList, curToken, _curToken2;
-    return _regeneratorRuntime().wrap(function _callee21$(_context21) {
-      while (1) {
-        switch (_context21.prev = _context21.next) {
-          case 0:
-            _context21.next = 2;
-            return redisClient.get(token);
-          case 2:
-            curTokenList = _context21.sent;
-            if (!curTokenList) {
-              _context21.next = 8;
-              break;
-            }
-            _context21.next = 6;
-            return redisClient.set(token, JSON.stringify([account]), "EX", MONTH_IN_SECONDS);
-          case 6:
-            _context21.next = 21;
-            break;
-          case 8:
-            _context21.prev = 8;
-            curToken = JSON.parse(curTokenList);
-            if (account in curToken) {
-              _context21.next = 14;
-              break;
-            }
-            curToken.push(account);
-            _context21.next = 14;
-            return redisClient.set(token, JSON.stringify(curToken), "EX", MONTH_IN_SECONDS);
-          case 14:
-            _context21.next = 21;
-            break;
-          case 16:
-            _context21.prev = 16;
-            _context21.t0 = _context21["catch"](8);
-            _curToken2 = curTokenList;
-            _context21.next = 21;
-            return redisClient.set(token, JSON.stringify([_curToken2]), "EX", MONTH_IN_SECONDS);
-          case 21:
-            _context21.t1 = JSON;
-            _context21.next = 24;
-            return redisClient.get(token);
-          case 24:
-            _context21.t2 = _context21.sent;
-            return _context21.abrupt("return", _context21.t1.parse.call(_context21.t1, _context21.t2));
-          case 26:
           case "end":
             return _context21.stop();
         }
       }
-    }, _callee21, null, [[8, 16]]);
+    }, _callee21);
   }));
-  return _set_or_upgrade_token_account_list.apply(this, arguments);
+  return _update_fcm_token_for_account.apply(this, arguments);
 }
-function get_fcm_tokens(_x48) {
-  return _get_fcm_tokens.apply(this, arguments);
+function get_or_upgrade_token_account_list(_x45, _x46) {
+  return _get_or_upgrade_token_account_list.apply(this, arguments);
 }
-function _get_fcm_tokens() {
-  _get_fcm_tokens = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee22(account) {
-    var tokens, new_token_list, _iterator9, _step9, t, account_list;
+function _get_or_upgrade_token_account_list() {
+  _get_or_upgrade_token_account_list = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee22(account, token) {
+    var curTokenList, tokenList, _token2;
     return _regeneratorRuntime().wrap(function _callee22$(_context22) {
       while (1) {
         switch (_context22.prev = _context22.next) {
           case 0:
             _context22.next = 2;
-            return redisClient.get(account);
+            return redisClient.get(token);
           case 2:
-            tokens = _context22.sent;
-            if (tokens) {
+            curTokenList = _context22.sent;
+            if (curTokenList) {
               _context22.next = 5;
               break;
             }
             return _context22.abrupt("return", []);
           case 5:
-            // tokens = JSON.parse(tokens.replace('\'', '"'))
-            tokens = JSON.parse(tokens);
-            // Rebuild the list for this account removing tokens that dont belong anymore
-            new_token_list = {};
-            new_token_list['data'] = [];
-            if ('data' in tokens) {
-              _context22.next = 10;
+            _context22.prev = 5;
+            tokenList = JSON.parse(curTokenList);
+            return _context22.abrupt("return", tokenList);
+          case 10:
+            _context22.prev = 10;
+            _context22.t0 = _context22["catch"](5);
+            _token2 = curTokenList; // CHECK (expire):
+            _context22.next = 15;
+            return redisClient.set(_token2, JSON.stringify([_token2]), "EX", MONTH_IN_SECONDS);
+          case 15:
+            if (!(account != _token2)) {
+              _context22.next = 17;
               break;
             }
             return _context22.abrupt("return", []);
-          case 10:
-            _iterator9 = _createForOfIteratorHelper(tokens['data']);
-            _context22.prev = 11;
-            _iterator9.s();
-          case 13:
-            if ((_step9 = _iterator9.n()).done) {
-              _context22.next = 23;
-              break;
-            }
-            t = _step9.value;
-            _context22.next = 17;
-            return get_or_upgrade_token_account_list(account, t);
           case 17:
-            account_list = _context22.sent;
-            if (account_list.includes(account)) {
-              _context22.next = 20;
-              break;
-            }
-            return _context22.abrupt("continue", 21);
+            _context22.t1 = JSON;
+            _context22.next = 20;
+            return redisClient.get(token);
           case 20:
-            new_token_list['data'].push(t);
-          case 21:
-            _context22.next = 13;
-            break;
-          case 23:
-            _context22.next = 28;
-            break;
-          case 25:
-            _context22.prev = 25;
-            _context22.t0 = _context22["catch"](11);
-            _iterator9.e(_context22.t0);
-          case 28:
-            _context22.prev = 28;
-            _iterator9.f();
-            return _context22.finish(28);
-          case 31:
-            _context22.next = 33;
-            return redisClient.set(account, JSON.stringify(new_token_list));
-          case 33:
-            return _context22.abrupt("return", _toConsumableArray(new Set(new_token_list['data'])));
-          case 34:
+            _context22.t2 = _context22.sent;
+            return _context22.abrupt("return", _context22.t1.parse.call(_context22.t1, _context22.t2));
+          case 22:
           case "end":
             return _context22.stop();
         }
       }
-    }, _callee22, null, [[11, 25, 28, 31]]);
+    }, _callee22, null, [[5, 10]]);
+  }));
+  return _get_or_upgrade_token_account_list.apply(this, arguments);
+}
+function set_or_upgrade_token_account_list(_x47, _x48) {
+  return _set_or_upgrade_token_account_list.apply(this, arguments);
+}
+function _set_or_upgrade_token_account_list() {
+  _set_or_upgrade_token_account_list = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee23(account, token) {
+    var curTokenList, tokenList, _token3;
+    return _regeneratorRuntime().wrap(function _callee23$(_context23) {
+      while (1) {
+        switch (_context23.prev = _context23.next) {
+          case 0:
+            _context23.next = 2;
+            return redisClient.get(token);
+          case 2:
+            curTokenList = _context23.sent;
+            if (curTokenList) {
+              _context23.next = 8;
+              break;
+            }
+            _context23.next = 6;
+            return redisClient.set(token, JSON.stringify([account]), "EX", MONTH_IN_SECONDS);
+          case 6:
+            _context23.next = 21;
+            break;
+          case 8:
+            _context23.prev = 8;
+            tokenList = JSON.parse(curTokenList);
+            if (tokenList.includes(account)) {
+              _context23.next = 14;
+              break;
+            }
+            tokenList.push(account);
+            _context23.next = 14;
+            return redisClient.set(token, JSON.stringify(tokenList), "EX", MONTH_IN_SECONDS);
+          case 14:
+            _context23.next = 21;
+            break;
+          case 16:
+            _context23.prev = 16;
+            _context23.t0 = _context23["catch"](8);
+            _token3 = curTokenList;
+            _context23.next = 21;
+            return redisClient.set(_token3, JSON.stringify([_token3]), "EX", MONTH_IN_SECONDS);
+          case 21:
+            _context23.t1 = JSON;
+            _context23.next = 24;
+            return redisClient.get(token);
+          case 24:
+            _context23.t2 = _context23.sent;
+            return _context23.abrupt("return", _context23.t1.parse.call(_context23.t1, _context23.t2));
+          case 26:
+          case "end":
+            return _context23.stop();
+        }
+      }
+    }, _callee23, null, [[8, 16]]);
+  }));
+  return _set_or_upgrade_token_account_list.apply(this, arguments);
+}
+function get_fcm_tokens(_x49) {
+  return _get_fcm_tokens.apply(this, arguments);
+}
+function _get_fcm_tokens() {
+  _get_fcm_tokens = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee24(account) {
+    var tokens, new_token_list, _iterator7, _step7, t, account_list;
+    return _regeneratorRuntime().wrap(function _callee24$(_context24) {
+      while (1) {
+        switch (_context24.prev = _context24.next) {
+          case 0:
+            _context24.next = 2;
+            return redisClient.get(account);
+          case 2:
+            tokens = _context24.sent;
+            if (tokens) {
+              _context24.next = 5;
+              break;
+            }
+            return _context24.abrupt("return", []);
+          case 5:
+            tokens = JSON.parse(tokens);
+            // Rebuild the list for this account removing tokens that dont belong anymore
+            new_token_list = {
+              data: []
+            };
+            if ('data' in tokens) {
+              _context24.next = 9;
+              break;
+            }
+            return _context24.abrupt("return", []);
+          case 9:
+            _iterator7 = _createForOfIteratorHelper(tokens['data']);
+            _context24.prev = 10;
+            _iterator7.s();
+          case 12:
+            if ((_step7 = _iterator7.n()).done) {
+              _context24.next = 22;
+              break;
+            }
+            t = _step7.value;
+            _context24.next = 16;
+            return get_or_upgrade_token_account_list(account, t);
+          case 16:
+            account_list = _context24.sent;
+            if (account_list.includes(account)) {
+              _context24.next = 19;
+              break;
+            }
+            return _context24.abrupt("continue", 20);
+          case 19:
+            new_token_list['data'].push(t);
+          case 20:
+            _context24.next = 12;
+            break;
+          case 22:
+            _context24.next = 27;
+            break;
+          case 24:
+            _context24.prev = 24;
+            _context24.t0 = _context24["catch"](10);
+            _iterator7.e(_context24.t0);
+          case 27:
+            _context24.prev = 27;
+            _iterator7.f();
+            return _context24.finish(27);
+          case 30:
+            _context24.next = 32;
+            return redisClient.set(account, JSON.stringify(new_token_list));
+          case 32:
+            return _context24.abrupt("return", _toConsumableArray(new Set(new_token_list['data'])));
+          case 33:
+          case "end":
+            return _context24.stop();
+        }
+      }
+    }, _callee24, null, [[10, 24, 27, 30]]);
   }));
   return _get_fcm_tokens.apply(this, arguments);
 }
