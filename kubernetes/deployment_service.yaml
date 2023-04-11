@@ -22,16 +22,52 @@ spec:
         ports:
         - containerPort: 6001
           name: api
-        # env:
-        #   - name: REDIS_HOST
-        #     value: redis.redis
-        #   - name: REDIS_DB
-        #     value: "1"
-        #   - name: BPOW_KEY
-        #     valueFrom:
-        #       secretKeyRef:
-        #         name: betsy
-        #         key: bpow_key
+        env:
+        - name: REDIS_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: nautilus-meta
+              key: REDIS_USERNAME
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: nautilus-meta
+              key: REDIS_PASSWORD
+        - name: REDIS_HOST
+          valueFrom:
+            secretKeyRef:
+              name: nautilus-meta
+              key: REDIS_HOST
+        - name: REDIS_PORT
+          valueFrom:
+            secretKeyRef:
+              name: nautilus-meta
+              key: REDIS_PORT
+        - name: FCM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: nautilus-meta
+              key: FCM_API_KEY
+        - name: FCM_SENDER_ID
+          valueFrom:
+            secretKeyRef:
+              name: nautilus-meta
+              key: FCM_SENDER_ID
+        - name: BRANCH_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: nautilus-meta
+              key: BRANCH_API_KEY
+        - name: HCAPTCHA_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: nautilus-meta
+              key: HCAPTCHA_SECRET_KEY
+        - name: FIREBASE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: nautilus-meta
+              key: FIREBASE_API_KEY
       # nodeSelector:
       #   node-pool: workers
 ---

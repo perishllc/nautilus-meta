@@ -121,6 +121,22 @@ async function confirmation_handler(message) {
 
 }
 
+const funding_addresses = ["nano_38713x95zyjsqzx6nm1dsom1jmm668owkeb9913ax6nfgj15az3nu8xkx579", "nano_3xnr31q9p8pce5j4qjwnhmfwkry1mgs67x63149zp6kdbcztfmfqjxwb9bw7", "nano_1u844awm5ch3ktwwzpzjfchj54ay5o6a7kyop5jycue7bw5jr117m15tx8oa", "nano_1f5z6gy3mf6gyyen79sidopxizcp59u6iahcmhtatti3qeh7q7m9w5s548nc", "nano_14qojirkhwgekfpf1jbqfd58ks7t6rrjtzuaetytkxmmuhdgx5cmjhgr5wu5", "nano_3mt48meumbxzw3nsnpq43nzrrnx8rb6sjrxtwqdix564htc73hhra4gbuipo", "nano_3uzdra7hdf9qb19a3g61jrsyt8zkthexrtyx186oc8auyegpir8ezm6y9sra",
+    "nano_3wneupytd8wxgjrydiq4axoipr9wbpkdycd83bfibemjgmreere1tgnn7ajh", "nano_13ddtgi44o3on9j1d6ughjakoe3s9m515q8fasissky7snsomf93cywsiq68", "nano_1n8syxftoknbadk8k46ou7rstawfmfr8qh1jq1dkuuskrspb9yygkise9drr", "nano_16uomspu1foykg7mumh39i3iosi73fsy74xfsr6rupiw3wzcrea8tnpax67h", "nano_1rw4ybt4hagog4uyhqd7mnaogeu6e4ik4kdswfbh9g3zfiyp1hz968mufyni", "nano_3s9dyxh6qm5uody1ou9g6a6g7qseqer1mgrwwoctwdgs37qt3i57w1dwt7wh"];
+
+async function funding_balances() {
+    for (let address of funding_addresses) {
+        let response = await rpc_call({ "action": "account_balance", "account": address });
+        if (!!response) {
+            let balance = BigInt(response["balance"]) + BigInt(response["receivable"]);
+            await redisClient.hSet("funding_balances", address, balance.toString());
+        }
+    }
+}
+
+// get account balances once every 10 minutes:
+setInterval(funding_balances, 10 * 60 * 1000);
+funding_balances();
 
 
 new_websocket(WS_URL, (socket) => {
@@ -228,8 +244,19 @@ app.get("/alerts/:lang", (req, res) => {
     res.json(get_active_alert(req.params.lang));
 });
 
-app.get("/funding/:lang", (req, res) => {
+app.get("/funding/:lang", async (req, res) => {
+    
     let activeFunding = get_active_funding(req.params.lang);
+
+    for (let i = 0; i < activeFunding.length; i++) {
+        if ("address" in activeFunding[i]) {
+            let balanceRaw = await redisClient.hGet("funding_balances", activeFunding[i]["address"]);
+            if (!!balanceRaw) {
+                activeFunding[i]["current_amount_raw"] = balanceRaw;
+            }
+        }
+    }
+
     res.json(activeFunding);
 });
 
@@ -971,7 +998,7 @@ app.post("/notifications", async (req, res) => {
     switch (request_json.action) {
         case "fcm_update":
             if (request_json.enabled) {
-                console.log("updating:" + request_json.account + " " + request_json.fcm_token_v2);
+                console.log("updating: " + request_json.account + " " + request_json.fcm_token_v2);
                 await update_fcm_token_for_account(request_json.account, request_json.fcm_token_v2)
             } else {
                 await delete_fcm_token_for_account(request_json.account, request_json.fcm_token_v2)
